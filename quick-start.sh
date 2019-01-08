@@ -13,7 +13,7 @@ done
 mv src/main/java/org/servantscode/hello src/main/java/org/servantscode/$SERVICE
 
 SERVICE="$(tr '[:lower:]' '[:upper:]' <<< ${SERVICE:0:1})${SERVICE:1}"
-DATE=`date +%D`
+DATE=`eventDate +%D`
 USER=`whoami`
 printf "Service: $SERVICE\nCreator: $USER\nCreated: $DATE" > README.md
 

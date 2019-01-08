@@ -1,9 +1,9 @@
 version: '3'
 services:
-  hello-svc:
-    image: "servantscode/hello:latest"
+  schedule-svc-svc:
+    image: "servantscode/schedule-svc:latest"
     ports:
-     - "8080:8080"
+     - "84:8080"
      
 networks:
   default:
