@@ -7,11 +7,8 @@ import org.servantscode.schedule.db.EventDB;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
-import java.time.temporal.TemporalAdjuster;
-import java.time.temporal.TemporalAdjusters;
 import java.util.Date;
 import java.util.List;
 
@@ -28,7 +25,7 @@ public class EventSvc {
     @GET @Produces(MediaType.APPLICATION_JSON)
     public List<Event> getEvents(@QueryParam("start_date") String startDateString,
                                  @QueryParam("end_date") String endDateString,
-                                 @QueryParam("partial_name") @DefaultValue("") String search) {
+                                 @QueryParam("partial_description") @DefaultValue("") String search) {
 
         try {
             SimpleDateFormat format = new SimpleDateFormat(INPUT_FORMAT);
@@ -51,7 +48,7 @@ public class EventSvc {
     @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
     public Event createEvent(Event event) {
         try {
-            LOG.debug("Creating event for: " + event.getEventDate().toString());
+            LOG.debug("Creating event for: " + event.getStartTime().toString());
             Event resp = new EventDB().create(event);
             LOG.info("Created event: " + event.getDescription());
             return resp;

@@ -31,7 +31,7 @@ public class EventDB extends DBAccess {
     }
 
     public List<Event> getEvents(Date startDate, Date endDate, String search) {
-        String sql = format("SELECT * FROM events WHERE%s event_datetime > ? AND event_datetime < ?", optionalWhereClause(search));
+        String sql = format("SELECT * FROM events WHERE%s end_time > ? AND start_time < ?", optionalWhereClause(search));
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
@@ -47,12 +47,13 @@ public class EventDB extends DBAccess {
 
     public Event create(Event event) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("INSERT INTO events(event_datetime, description, scheduler_id, ministry_id) values (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
+             PreparedStatement stmt = conn.prepareStatement("INSERT INTO events(start_time, end_time, description, scheduler_id, ministry_id) values (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
         ){
-            stmt.setTimestamp(1, new Timestamp(event.getEventDate().getTime()));
-            stmt.setString(2, event.getDescription());
-            stmt.setInt(3, event.getSchedulerId());
-            stmt.setInt(4, event.getMinistryId());
+            stmt.setTimestamp(1, new Timestamp(event.getStartTime().getTime()));
+            stmt.setTimestamp(2, new Timestamp(event.getEndTime().getTime()));
+            stmt.setString(3, event.getDescription());
+            stmt.setInt(4, event.getSchedulerId());
+            stmt.setInt(5, event.getMinistryId());
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not create event: " + event.getDescription());
@@ -71,14 +72,15 @@ public class EventDB extends DBAccess {
 
     public Event updateEvent(Event event) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("UPDATE events SET event_datetime=?, description=?, scheduler_id=?, ministry_id=? WHERE id=?")
+             PreparedStatement stmt = conn.prepareStatement("UPDATE events SET start_time=?, end_time=?, description=?, scheduler_id=?, ministry_id=? WHERE id=?")
         ) {
 
-            stmt.setTimestamp(1, new Timestamp(event.getEventDate().getTime()));
-            stmt.setString(2, event.getDescription());
-            stmt.setInt(3, event.getSchedulerId());
-            stmt.setInt(4, event.getMinistryId());
-            stmt.setInt(5, event.getId());
+            stmt.setTimestamp(1, new Timestamp(event.getStartTime().getTime()));
+            stmt.setTimestamp(2, new Timestamp(event.getEndTime().getTime()));
+            stmt.setString(3, event.getDescription());
+            stmt.setInt(4, event.getSchedulerId());
+            stmt.setInt(5, event.getMinistryId());
+            stmt.setInt(6, event.getId());
 
             if (stmt.executeUpdate() == 0)
                 throw new RuntimeException("Could not update event: " + event.getDescription());
@@ -91,7 +93,7 @@ public class EventDB extends DBAccess {
 
     public boolean deleteEvent(int id) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("DELETE FROM evenets WHERE id=?")
+             PreparedStatement stmt = conn.prepareStatement("DELETE FROM events WHERE id=?")
         ) {
 
             stmt.setInt(1, id);
@@ -108,7 +110,8 @@ public class EventDB extends DBAccess {
             while (rs.next()) {
                 Event e = new Event();
                 e.setId(rs.getInt("id"));
-                e.setEventDate(new Date(rs.getTimestamp("event_datetime").getTime()));
+                e.setStartTime(new Date(rs.getTimestamp("start_time").getTime()));
+                e.setEndTime(new Date(rs.getTimestamp("end_time").getTime()));
                 e.setDescription(rs.getString("description"));
                 e.setSchedulerId(rs.getInt("scheduler_id"));
                 e.setMinistryId(rs.getInt("ministry_id"));
