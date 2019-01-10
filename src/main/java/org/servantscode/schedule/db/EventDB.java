@@ -9,6 +9,7 @@ import java.util.Date;
 import java.util.List;
 
 import static java.lang.String.format;
+import static java.sql.Types.INTEGER;
 import static org.servantscode.commons.StringUtils.isEmpty;
 
 public class EventDB extends DBAccess {
@@ -53,7 +54,11 @@ public class EventDB extends DBAccess {
             stmt.setTimestamp(2, new Timestamp(event.getEndTime().getTime()));
             stmt.setString(3, event.getDescription());
             stmt.setInt(4, event.getSchedulerId());
-            stmt.setInt(5, event.getMinistryId());
+            if(event.getMinistryId()> 0) {
+                stmt.setInt(5, event.getMinistryId());
+            } else {
+                stmt.setNull(5, INTEGER);
+            }
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not create event: " + event.getDescription());
@@ -79,7 +84,11 @@ public class EventDB extends DBAccess {
             stmt.setTimestamp(2, new Timestamp(event.getEndTime().getTime()));
             stmt.setString(3, event.getDescription());
             stmt.setInt(4, event.getSchedulerId());
-            stmt.setInt(5, event.getMinistryId());
+            if(event.getMinistryId()> 0) {
+                stmt.setInt(5, event.getMinistryId());
+            } else {
+                stmt.setNull(5, INTEGER);
+            }
             stmt.setInt(6, event.getId());
 
             if (stmt.executeUpdate() == 0)
