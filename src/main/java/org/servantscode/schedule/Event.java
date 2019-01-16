@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
 public class Event {
@@ -14,6 +15,7 @@ public class Event {
     private Date endTime;
     private String description;
     private int schedulerId;
+    private String ministryName;
     private int ministryId;
 
     // ----- Accessors -----
@@ -32,6 +34,15 @@ public class Event {
     public int getSchedulerId() { return schedulerId; }
     public void setSchedulerId(int schedulerId) { this.schedulerId = schedulerId; }
 
+    public String getMinistryName() { return ministryName; }
+    public void setMinistryName(String ministryName) { this.ministryName = ministryName; }
+
     public int getMinistryId() { return ministryId; }
     public void setMinistryId(int ministryId) { this.ministryId = ministryId; }
+
+    public static void main(String[] args) {
+        String time = "2019-01-01T06:00:00.000Z";
+        DateTimeFormatter parser2 = DateTimeFormatter.ISO_DATE_TIME;
+        System.out.println("Parsed" + parser2.parse(time).toString());
+    }
 }

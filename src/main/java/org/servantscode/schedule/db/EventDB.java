@@ -1,5 +1,7 @@
 package org.servantscode.schedule.db;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.db.DBAccess;
 import org.servantscode.schedule.Event;
 
@@ -12,11 +14,14 @@ import static java.lang.String.format;
 import static java.sql.Types.INTEGER;
 import static org.servantscode.commons.StringUtils.isEmpty;
 
+@SuppressWarnings("SqlNoDataSourceInspection")
 public class EventDB extends DBAccess {
+    private static final Logger LOG = LogManager.getLogger(EventDB.class);
 
     public Event getEvent(int id) {
+        String sql = "SELECT *, m.name AS ministry_name FROM events LEFT JOIN ministries m ON ministry_id=m.id WHERE id=?";
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM events WHERE id=?")
+             PreparedStatement stmt = conn.prepareStatement(sql);
         ) {
 
             stmt.setInt(1, id);
@@ -32,13 +37,27 @@ public class EventDB extends DBAccess {
     }
 
     public List<Event> getEvents(Date startDate, Date endDate, String search) {
-        String sql = format("SELECT * FROM events WHERE%s end_time > ? AND start_time < ?", optionalWhereClause(search));
+        String sql = format("SELECT *, m.name AS ministry_name FROM events LEFT JOIN ministries m ON ministry_id=m.id WHERE%s end_time > ? AND start_time < ? ORDER BY start_time", optionalWhereClause(search));
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
 
-            stmt.setDate(1, convert(startDate));
-            stmt.setDate(2, convert(endDate));
+            stmt.setTimestamp(1,  new Timestamp(startDate.getTime()));
+            stmt.setTimestamp(2,  new Timestamp(endDate.getTime()));
+
+            return processResults(stmt);
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not retrieve events.", e);
+        }
+    }
+
+    public List<Event> getUpcomingMinistryEvents(int ministryId, int count) {
+        String sql = "SELECT *, m.name AS ministry_name FROM events LEFT JOIN ministries m ON ministry_id=m.id WHERE start_time > now() AND ministry_id=? ORDER BY start_time LIMIT ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)
+        ) {
+            stmt.setInt(1, ministryId);
+            stmt.setInt(2, count);
 
             return processResults(stmt);
         } catch (SQLException e) {
@@ -50,6 +69,7 @@ public class EventDB extends DBAccess {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement("INSERT INTO events(start_time, end_time, description, scheduler_id, ministry_id) values (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
         ){
+
             stmt.setTimestamp(1, new Timestamp(event.getStartTime().getTime()));
             stmt.setTimestamp(2, new Timestamp(event.getEndTime().getTime()));
             stmt.setString(3, event.getDescription());
@@ -73,7 +93,6 @@ public class EventDB extends DBAccess {
             throw new RuntimeException("Could not add event: " + event.getDescription(), e);
         }
     }
-
 
     public Event updateEvent(Event event) {
         try (Connection conn = getConnection();
@@ -124,6 +143,7 @@ public class EventDB extends DBAccess {
                 e.setDescription(rs.getString("description"));
                 e.setSchedulerId(rs.getInt("scheduler_id"));
                 e.setMinistryId(rs.getInt("ministry_id"));
+                e.setMinistryName(rs.getString("ministry_name"));
                 events.add(e);
             }
             return events;
@@ -133,5 +153,4 @@ public class EventDB extends DBAccess {
     private String optionalWhereClause(String search) {
         return !isEmpty(search) ? format(" description ILIKE '%%%s%%'", search.replace("'", "''")) : "";
     }
-
 }

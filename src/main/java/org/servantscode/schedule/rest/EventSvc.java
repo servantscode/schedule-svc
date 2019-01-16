@@ -1,5 +1,6 @@
 package org.servantscode.schedule.rest;
 
+import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.schedule.Event;
@@ -7,7 +8,6 @@ import org.servantscode.schedule.db.EventDB;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
@@ -20,24 +20,33 @@ import static org.servantscode.commons.StringUtils.isEmpty;
 public class EventSvc {
     private static final Logger LOG = LogManager.getLogger(EventSvc.class);
 
-    private static final String INPUT_FORMAT = "yyyy-MM-dd";
-
     @GET @Produces(MediaType.APPLICATION_JSON)
     public List<Event> getEvents(@QueryParam("start_date") String startDateString,
                                  @QueryParam("end_date") String endDateString,
                                  @QueryParam("partial_description") @DefaultValue("") String search) {
 
         try {
-            SimpleDateFormat format = new SimpleDateFormat(INPUT_FORMAT);
             Date start = !isEmpty(startDateString) ?
-                    format.parse(startDateString) :
+                    Date.from(Instant.parse(startDateString)):
                     Date.from(Instant.now().with(firstDayOfMonth()));
             Date end = !isEmpty(endDateString) ?
-                    format.parse(endDateString) :
+                    Date.from(Instant.parse(endDateString)):
                     Date.from(start.toInstant().with(lastDayOfMonth()));
 
             LOG.trace(String.format("Retrieving events [%s, %s], search: %s", start.toString(), end.toString(), search));
             return new EventDB().getEvents(start, end, search);
+        } catch (Throwable t) {
+            LOG.error("Retrieving events failed:", t);
+        }
+        return null;
+    }
+
+    @GET @Path("/ministry/{ministryId}") @Produces(MediaType.APPLICATION_JSON)
+    public List<Event> getUpcomingEvents(@PathParam("ministryId") int ministryId,
+                                         @QueryParam("count") @DefaultValue("10") int count) {
+
+        try {
+            return new EventDB().getUpcomingMinistryEvents(ministryId, count);
         } catch (Throwable t) {
             LOG.error("Retrieving events failed:", t);
         }
