@@ -15,9 +15,6 @@ repositories {
 }
 
 dependencies {
-    //Local
-    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-jsr310', version: '2.9.8'
-    
     //Common
     implementation group: 'org.servantscode', name: 'java-commons', version: '1.0'
     implementation group: 'javax.activation', name: 'activation', version: '1.1'

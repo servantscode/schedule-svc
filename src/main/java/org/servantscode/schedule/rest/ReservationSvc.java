@@ -7,13 +7,10 @@ import org.servantscode.schedule.db.ReservationDB;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
-import java.time.*;
-import java.util.Date;
+import java.time.ZonedDateTime;
 import java.util.List;
 
-import static java.time.temporal.TemporalAdjusters.firstDayOfMonth;
-import static java.time.temporal.TemporalAdjusters.lastDayOfMonth;
-import static org.servantscode.commons.StringUtils.isEmpty;
+import static org.servantscode.commons.DateUtils.parse;
 
 @Path("/reservation")
 public class ReservationSvc {
@@ -36,8 +33,8 @@ public class ReservationSvc {
         if(resourceId != 0 && resourceType == null)
             throw new BadRequestException();
 
-        ZonedDateTime start = parseDate(startDateString);
-        ZonedDateTime end = parseDate(endDateString);
+        ZonedDateTime start = parse(startDateString);
+        ZonedDateTime end = parse(endDateString);
         if((start == null) != (end == null))
             throw new BadRequestException();
 
@@ -45,7 +42,7 @@ public class ReservationSvc {
             throw new BadRequestException();
 
         try {
-            LOG.trace(String.format("Retrieving reservations"));
+            LOG.trace("Retrieving reservations");
             return db.getReservations(start, end, eventId, reservingPersonId, resourceType, resourceId);
         } catch (Throwable t) {
             LOG.error("Retrieving reservations failed:", t);
@@ -99,11 +96,5 @@ public class ReservationSvc {
         return String.format("Reservation(%d) of %s:%d", reservation.getId(), reservation.getResourceType(), reservation.getResourceId()) +
                 (reservation.getEventId() > 0? "for event:" + reservation.getEventId(): "") +
                 "by reserver:" + reservation.getReservingPersonId();
-    }
-
-    private ZonedDateTime parseDate(String input) {
-        return !isEmpty(input) ?
-                ZonedDateTime.parse(input):
-                null;
     }
 }

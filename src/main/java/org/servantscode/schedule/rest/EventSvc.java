@@ -7,16 +7,13 @@ import org.servantscode.schedule.db.EventDB;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static java.time.temporal.TemporalAdjusters.firstDayOfMonth;
 import static java.time.temporal.TemporalAdjusters.lastDayOfMonth;
-import static org.servantscode.commons.StringUtils.isEmpty;
+import static org.servantscode.commons.DateUtils.parse;
 
 @Path("/event")
 public class EventSvc {
@@ -28,12 +25,8 @@ public class EventSvc {
                                  @QueryParam("partial_description") @DefaultValue("") String search) {
 
         try {
-            ZonedDateTime start = !isEmpty(startDateString) ?
-                    ZonedDateTime.parse(startDateString):
-                    ZonedDateTime.ofInstant(Instant.now().with(firstDayOfMonth()), ZoneId.systemDefault());
-            ZonedDateTime end = !isEmpty(endDateString) ?
-                    ZonedDateTime.parse(endDateString):
-                    ZonedDateTime.ofInstant(Instant.now().with(lastDayOfMonth()), ZoneId.systemDefault());
+            ZonedDateTime start = parse(startDateString, firstDayOfMonth());
+            ZonedDateTime end = parse(endDateString, lastDayOfMonth());
 
             LOG.trace(String.format("Retrieving events [%s, %s], search: %s",
                     start.format(ISO_OFFSET_DATE_TIME), end.format(ISO_OFFSET_DATE_TIME), search));

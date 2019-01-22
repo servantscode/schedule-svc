@@ -1,12 +1,6 @@
 package org.servantscode.schedule;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
 
 public class Event {
     private int id;

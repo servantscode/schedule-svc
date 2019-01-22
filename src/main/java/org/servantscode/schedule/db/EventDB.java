@@ -8,7 +8,6 @@ import org.servantscode.schedule.Event;
 import java.sql.*;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import static java.lang.String.format;

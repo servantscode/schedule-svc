@@ -5,15 +5,12 @@ import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.AutoCompleteComparator;
 import org.servantscode.commons.db.DBAccess;
 import org.servantscode.schedule.Room;
-import org.servantscode.schedule.Room;
 
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import static java.lang.String.format;
-import static java.sql.Types.INTEGER;
 import static org.servantscode.commons.StringUtils.isEmpty;
 
 @SuppressWarnings("SqlNoDataSourceInspection")

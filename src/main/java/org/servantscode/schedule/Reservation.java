@@ -1,10 +1,6 @@
 package org.servantscode.schedule;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-
-import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
-import java.util.Date;
 
 public class Reservation {
     public enum ResourceType { ROOM, EQUIPMENT };

@@ -1,8 +1,6 @@
 package org.servantscode.schedule;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-
-import java.util.Date;
+import java.time.ZonedDateTime;
 
 public class EventRequest {
     public enum RequestStatus { REQUESTED, APPROVED, DENIED };
@@ -10,19 +8,17 @@ public class EventRequest {
     private int id;
     private Event event;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-ddTHH:mm:ss+Z")
-    private Date requestDate;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-ddTHH:mm:ss+Z")
-    private Date approvalDate;
+    private ZonedDateTime requestDate;
+    private ZonedDateTime approvalDate;
     private int approverId;
     private RequestStatus status;
 
     // ----- Accessors -----
-    public Date getRequestDate() { return requestDate; }
-    public void setRequestDate(Date requestDate) { this.requestDate = requestDate; }
+    public ZonedDateTime getRequestDate() { return requestDate; }
+    public void setRequestDate(ZonedDateTime requestDate) { this.requestDate = requestDate; }
 
-    public Date getApprovalDate() { return approvalDate; }
-    public void setApprovalDate(Date approvalDate) { this.approvalDate = approvalDate; }
+    public ZonedDateTime getApprovalDate() { return approvalDate; }
+    public void setApprovalDate(ZonedDateTime approvalDate) { this.approvalDate = approvalDate; }
 
     public int getApproverId() { return approverId; }
     public void setApproverId(int approverId) { this.approverId = approverId; }
