@@ -67,7 +67,7 @@ public class ReservationSvc {
     @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
     public Reservation updateReservation(Reservation reservation) {
         try {
-            Reservation resp = db.updateReservation(reservation);
+            Reservation resp = db.update(reservation);
             LOG.info("Edited " + toString(reservation));
             return resp;
         } catch (Throwable t) {
@@ -82,7 +82,7 @@ public class ReservationSvc {
             throw new NotFoundException();
         try {
             Reservation reservation = db.getReservation(id);
-            if(reservation == null || db.deleteReservation(id))
+            if(reservation == null || db.delete(id))
                 throw new NotFoundException();
             LOG.info("Deleted: " + toString(reservation));
         } catch (Throwable t) {

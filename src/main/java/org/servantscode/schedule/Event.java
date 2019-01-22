@@ -1,6 +1,7 @@
 package org.servantscode.schedule;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 
 public class Event {
     private int id;
@@ -10,6 +11,8 @@ public class Event {
     private int schedulerId;
     private String ministryName;
     private int ministryId;
+
+    private List<Reservation> reservations;
 
     // ----- Accessors -----
     public int getId() { return id; }
@@ -32,4 +35,7 @@ public class Event {
 
     public int getMinistryId() { return ministryId; }
     public void setMinistryId(int ministryId) { this.ministryId = ministryId; }
+
+    public List<Reservation> getReservations() { return reservations; }
+    public void setReservations(List<Reservation> reservations) { this.reservations = reservations; }
 }

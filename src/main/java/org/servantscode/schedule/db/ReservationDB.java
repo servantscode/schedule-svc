@@ -137,7 +137,7 @@ public class ReservationDB extends DBAccess {
         }
     }
 
-    public Reservation updateReservation(Reservation reservation) {
+    public Reservation update(Reservation reservation) {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement("UPDATE reservations SET resource_type=?, resource_id=?, reserving_person_id=?, event_id=?, start_time=?, end_time=? WHERE id=?")
         ) {
@@ -159,7 +159,7 @@ public class ReservationDB extends DBAccess {
         }
     }
 
-    public boolean deleteReservation(int id) {
+    public boolean delete(int id) {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement("DELETE FROM reservations WHERE id=?")
         ) {
@@ -167,6 +167,17 @@ public class ReservationDB extends DBAccess {
             return stmt.executeUpdate() != 0;
         } catch (SQLException e) {
             throw new RuntimeException("Could not delete reservation: " + id, e);
+        }
+    }
+
+    public boolean deleteReservationsByEvent(int eventId) {
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement("DELETE FROM reservations WHERE event_id=?")
+        ) {
+            stmt.setInt(1, eventId);
+            return stmt.executeUpdate() != 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not delete reservations for event: " + eventId, e);
         }
     }
 

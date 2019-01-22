@@ -3,6 +3,7 @@ package org.servantscode.schedule.rest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.schedule.Event;
+import org.servantscode.schedule.ReservationManager;
 import org.servantscode.schedule.db.EventDB;
 
 import javax.ws.rs.*;
@@ -19,6 +20,14 @@ import static org.servantscode.commons.DateUtils.parse;
 public class EventSvc {
     private static final Logger LOG = LogManager.getLogger(EventSvc.class);
 
+    private EventDB db;
+    private ReservationManager resMan;
+
+    public EventSvc() {
+        db = new EventDB();
+        resMan = new ReservationManager();
+    }
+
     @GET @Produces(MediaType.APPLICATION_JSON)
     public List<Event> getEvents(@QueryParam("start_date") String startDateString,
                                  @QueryParam("end_date") String endDateString,
@@ -30,7 +39,11 @@ public class EventSvc {
 
             LOG.trace(String.format("Retrieving events [%s, %s], search: %s",
                     start.format(ISO_OFFSET_DATE_TIME), end.format(ISO_OFFSET_DATE_TIME), search));
-            return new EventDB().getEvents(start, end, search);
+
+            List<Event> events = db.getEvents(start, end, search);
+            for(Event event: events)
+                event.setReservations(resMan.getReservationsForEvent(event.getId()));
+            return events;
         } catch (Throwable t) {
             LOG.error("Retrieving events failed:", t);
         }
@@ -42,7 +55,10 @@ public class EventSvc {
                                          @QueryParam("count") @DefaultValue("10") int count) {
 
         try {
-            return new EventDB().getUpcomingMinistryEvents(ministryId, count);
+            List<Event> events = db.getUpcomingMinistryEvents(ministryId, count);
+            for(Event event: events)
+                event.setReservations(resMan.getReservationsForEvent(event.getId()));
+            return events;
         } catch (Throwable t) {
             LOG.error("Retrieving events failed:", t);
         }
@@ -54,7 +70,8 @@ public class EventSvc {
     public Event createEvent(Event event) {
         try {
             LOG.debug("Creating event for: " + event.getStartTime().toString());
-            Event resp = new EventDB().create(event);
+            Event resp = db.create(event);
+            resMan.createReservationsForEvent(event.getReservations(), resp.getId());
             LOG.info("Created event: " + event.getDescription());
             return resp;
         } catch (Throwable t) {
@@ -67,7 +84,8 @@ public class EventSvc {
     @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
     public Event updateEvent(Event event) {
         try {
-            Event resp = new EventDB().updateEvent(event);
+            Event resp = db.updateEvent(event);
+            resMan.updateRservationsForEvent(event.getReservations(), resp.getId());
             LOG.info("Edited event: " + event.getDescription());
             return resp;
         } catch (Throwable t) {
@@ -81,10 +99,10 @@ public class EventSvc {
         if(id <= 0)
             throw new NotFoundException();
         try {
-            EventDB db = new EventDB();
             Event event = db.getEvent(id);
             if(event == null || db.deleteEvent(id))
                 throw new NotFoundException();
+            resMan.deleteReservationsForEvent(id);
             LOG.info("Deleted event: " + event.getDescription());
         } catch (Throwable t) {
             LOG.error("Deleting event failed:", t);

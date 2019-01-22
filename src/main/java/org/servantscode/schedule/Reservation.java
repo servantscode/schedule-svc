@@ -8,6 +8,7 @@ public class Reservation {
     private int id;
     private ResourceType resourceType;
     private int resourceId;
+    private String resourceName;
     private int reservingPersonId;
     private int eventId;
 
@@ -23,6 +24,9 @@ public class Reservation {
 
     public int getResourceId() { return resourceId; }
     public void setResourceId(int resourceId) { this.resourceId = resourceId; }
+
+    public String getResourceName() { return resourceName; }
+    public void setResourceName(String resourceName) { this.resourceName = resourceName; }
 
     public int getReservingPersonId() { return reservingPersonId; }
     public void setReservingPersonId(int reservingPersonId) { this.reservingPersonId = reservingPersonId; }
