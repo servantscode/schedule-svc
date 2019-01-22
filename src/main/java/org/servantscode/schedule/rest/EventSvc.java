@@ -1,6 +1,5 @@
 package org.servantscode.schedule.rest;
 
-import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.schedule.Event;
@@ -9,9 +8,12 @@ import org.servantscode.schedule.db.EventDB;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.time.Instant;
-import java.util.Date;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static java.time.temporal.TemporalAdjusters.firstDayOfMonth;
 import static java.time.temporal.TemporalAdjusters.lastDayOfMonth;
 import static org.servantscode.commons.StringUtils.isEmpty;
@@ -26,14 +28,15 @@ public class EventSvc {
                                  @QueryParam("partial_description") @DefaultValue("") String search) {
 
         try {
-            Date start = !isEmpty(startDateString) ?
-                    Date.from(Instant.parse(startDateString)):
-                    Date.from(Instant.now().with(firstDayOfMonth()));
-            Date end = !isEmpty(endDateString) ?
-                    Date.from(Instant.parse(endDateString)):
-                    Date.from(start.toInstant().with(lastDayOfMonth()));
+            ZonedDateTime start = !isEmpty(startDateString) ?
+                    ZonedDateTime.parse(startDateString):
+                    ZonedDateTime.ofInstant(Instant.now().with(firstDayOfMonth()), ZoneId.systemDefault());
+            ZonedDateTime end = !isEmpty(endDateString) ?
+                    ZonedDateTime.parse(endDateString):
+                    ZonedDateTime.ofInstant(Instant.now().with(lastDayOfMonth()), ZoneId.systemDefault());
 
-            LOG.trace(String.format("Retrieving events [%s, %s], search: %s", start.toString(), end.toString(), search));
+            LOG.trace(String.format("Retrieving events [%s, %s], search: %s",
+                    start.format(ISO_OFFSET_DATE_TIME), end.format(ISO_OFFSET_DATE_TIME), search));
             return new EventDB().getEvents(start, end, search);
         } catch (Throwable t) {
             LOG.error("Retrieving events failed:", t);
@@ -95,5 +98,4 @@ public class EventSvc {
             throw t;
         }
     }
-
 }

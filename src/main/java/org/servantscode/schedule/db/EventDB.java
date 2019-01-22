@@ -6,6 +6,7 @@ import org.servantscode.commons.db.DBAccess;
 import org.servantscode.schedule.Event;
 
 import java.sql.*;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -36,14 +37,14 @@ public class EventDB extends DBAccess {
         }
     }
 
-    public List<Event> getEvents(Date startDate, Date endDate, String search) {
+    public List<Event> getEvents(ZonedDateTime startDate, ZonedDateTime endDate, String search) {
         String sql = format("SELECT *, m.name AS ministry_name FROM events LEFT JOIN ministries m ON ministry_id=m.id WHERE%s end_time > ? AND start_time < ? ORDER BY start_time", optionalWhereClause(search));
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)
         ) {
 
-            stmt.setTimestamp(1,  new Timestamp(startDate.getTime()));
-            stmt.setTimestamp(2,  new Timestamp(endDate.getTime()));
+            stmt.setTimestamp(1,  convert(startDate));
+            stmt.setTimestamp(2,  convert(endDate));
 
             return processResults(stmt);
         } catch (SQLException e) {
@@ -70,8 +71,8 @@ public class EventDB extends DBAccess {
              PreparedStatement stmt = conn.prepareStatement("INSERT INTO events(start_time, end_time, description, scheduler_id, ministry_id) values (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
         ){
 
-            stmt.setTimestamp(1, new Timestamp(event.getStartTime().getTime()));
-            stmt.setTimestamp(2, new Timestamp(event.getEndTime().getTime()));
+            stmt.setTimestamp(1, convert(event.getStartTime()));
+            stmt.setTimestamp(2, convert(event.getEndTime()));
             stmt.setString(3, event.getDescription());
             stmt.setInt(4, event.getSchedulerId());
             if(event.getMinistryId()> 0) {
@@ -99,8 +100,8 @@ public class EventDB extends DBAccess {
              PreparedStatement stmt = conn.prepareStatement("UPDATE events SET start_time=?, end_time=?, description=?, scheduler_id=?, ministry_id=? WHERE id=?")
         ) {
 
-            stmt.setTimestamp(1, new Timestamp(event.getStartTime().getTime()));
-            stmt.setTimestamp(2, new Timestamp(event.getEndTime().getTime()));
+            stmt.setTimestamp(1, convert(event.getStartTime()));
+            stmt.setTimestamp(2, convert(event.getEndTime()));
             stmt.setString(3, event.getDescription());
             stmt.setInt(4, event.getSchedulerId());
             if(event.getMinistryId()> 0) {
@@ -138,8 +139,8 @@ public class EventDB extends DBAccess {
             while (rs.next()) {
                 Event e = new Event();
                 e.setId(rs.getInt("id"));
-                e.setStartTime(new Date(rs.getTimestamp("start_time").getTime()));
-                e.setEndTime(new Date(rs.getTimestamp("end_time").getTime()));
+                e.setStartTime(convert(rs.getTimestamp("start_time")));
+                e.setEndTime(convert(rs.getTimestamp("end_time")));
                 e.setDescription(rs.getString("description"));
                 e.setSchedulerId(rs.getInt("scheduler_id"));
                 e.setMinistryId(rs.getInt("ministry_id"));
