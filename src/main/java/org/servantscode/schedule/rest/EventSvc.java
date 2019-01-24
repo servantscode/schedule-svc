@@ -3,6 +3,7 @@ package org.servantscode.schedule.rest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.schedule.Event;
+import org.servantscode.schedule.Reservation;
 import org.servantscode.schedule.ReservationManager;
 import org.servantscode.schedule.db.EventDB;
 
@@ -71,7 +72,10 @@ public class EventSvc {
         try {
             LOG.debug("Creating event for: " + event.getStartTime().toString());
             Event resp = db.create(event);
-            resMan.createReservationsForEvent(event.getReservations(), resp.getId());
+            List<Reservation> reservations = event.getReservations();
+            for(Reservation res: reservations)
+                res.setEventId(resp.getId());
+            resMan.createReservationsForEvent(reservations, resp.getId());
             LOG.info("Created event: " + event.getDescription());
             return resp;
         } catch (Throwable t) {
