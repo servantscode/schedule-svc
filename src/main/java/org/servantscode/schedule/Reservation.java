@@ -15,6 +15,23 @@ public class Reservation {
     private ZonedDateTime startTime;
     private ZonedDateTime endTime;
 
+    public Reservation() {}
+
+    public Reservation(Reservation r) {
+        this.resourceType = r.resourceType;
+        this.resourceId = r.resourceId;
+        this.resourceName = r.resourceName;
+        this.reservingPersonId = r.reservingPersonId;
+        this.eventId = r.eventId;
+        this.startTime = r.startTime;
+        this.endTime = r.endTime;
+    }
+
+    public boolean isSameResource(Reservation other) {
+        return this.resourceId == other.resourceId &&
+                this.resourceType == other.resourceType;
+    }
+
     // ----- Accessors -----
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }

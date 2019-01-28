@@ -19,7 +19,7 @@ public class EventDB extends DBAccess {
     private static final Logger LOG = LogManager.getLogger(EventDB.class);
 
     public Event getEvent(int id) {
-        String sql = "SELECT *, m.name AS ministry_name FROM events LEFT JOIN ministries m ON ministry_id=m.id WHERE id=?";
+        String sql = "SELECT e.*, m.name AS ministry_name FROM events e LEFT JOIN ministries m ON ministry_id=m.id WHERE e.id=?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
         ) {
@@ -65,19 +65,35 @@ public class EventDB extends DBAccess {
         }
     }
 
+    public List<Event> getUpcomingRecurringEvents(int recurrenceId, ZonedDateTime start) {
+        String sql = "SELECT *, m.name AS ministry_name FROM events LEFT JOIN ministries m ON ministry_id=m.id WHERE recurring_meeting_id=? AND start_time >= ? ORDER BY start_time";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)
+        ) {
+            stmt.setInt(1, recurrenceId);
+            stmt.setTimestamp(2, convert(start));
+
+            return processResults(stmt);
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not retrieve events.", e);
+        }
+    }
+
+
     public Event create(Event event) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("INSERT INTO events(start_time, end_time, description, scheduler_id, ministry_id) values (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
+             PreparedStatement stmt = conn.prepareStatement("INSERT INTO events(recurring_meeting_id, start_time, end_time, description, scheduler_id, ministry_id) values (?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
         ){
 
-            stmt.setTimestamp(1, convert(event.getStartTime()));
-            stmt.setTimestamp(2, convert(event.getEndTime()));
-            stmt.setString(3, event.getDescription());
-            stmt.setInt(4, event.getSchedulerId());
+            stmt.setInt(1, event.getRecurringMeetingId());
+            stmt.setTimestamp(2, convert(event.getStartTime()));
+            stmt.setTimestamp(3, convert(event.getEndTime()));
+            stmt.setString(4, event.getDescription());
+            stmt.setInt(5, event.getSchedulerId());
             if(event.getMinistryId()> 0) {
-                stmt.setInt(5, event.getMinistryId());
+                stmt.setInt(6, event.getMinistryId());
             } else {
-                stmt.setNull(5, INTEGER);
+                stmt.setNull(6, INTEGER);
             }
 
             if(stmt.executeUpdate() == 0) {
@@ -96,19 +112,20 @@ public class EventDB extends DBAccess {
 
     public Event updateEvent(Event event) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("UPDATE events SET start_time=?, end_time=?, description=?, scheduler_id=?, ministry_id=? WHERE id=?")
+             PreparedStatement stmt = conn.prepareStatement("UPDATE events SET recurring_meeting_id=?, start_time=?, end_time=?, description=?, scheduler_id=?, ministry_id=? WHERE id=?")
         ) {
 
-            stmt.setTimestamp(1, convert(event.getStartTime()));
-            stmt.setTimestamp(2, convert(event.getEndTime()));
-            stmt.setString(3, event.getDescription());
-            stmt.setInt(4, event.getSchedulerId());
+            stmt.setInt(1, event.getRecurringMeetingId());
+            stmt.setTimestamp(2, convert(event.getStartTime()));
+            stmt.setTimestamp(3, convert(event.getEndTime()));
+            stmt.setString(4, event.getDescription());
+            stmt.setInt(5, event.getSchedulerId());
             if(event.getMinistryId()> 0) {
-                stmt.setInt(5, event.getMinistryId());
+                stmt.setInt(6, event.getMinistryId());
             } else {
-                stmt.setNull(5, INTEGER);
+                stmt.setNull(6, INTEGER);
             }
-            stmt.setInt(6, event.getId());
+            stmt.setInt(7, event.getId());
 
             if (stmt.executeUpdate() == 0)
                 throw new RuntimeException("Could not update event: " + event.getDescription());
@@ -138,6 +155,7 @@ public class EventDB extends DBAccess {
             while (rs.next()) {
                 Event e = new Event();
                 e.setId(rs.getInt("id"));
+                e.setRecurringMeetingId(rs.getInt("recurring_meeting_id"));
                 e.setStartTime(convert(rs.getTimestamp("start_time")));
                 e.setEndTime(convert(rs.getTimestamp("end_time")));
                 e.setDescription(rs.getString("description"));
