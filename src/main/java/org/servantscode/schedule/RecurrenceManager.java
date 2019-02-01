@@ -173,4 +173,12 @@ public class RecurrenceManager {
 
         return newEvent;
     }
+
+    public void populateRecurrences(List<Event> events, List<Recurrence> recurrences) {
+        recurrences.forEach(r -> {
+            events.stream().filter(e -> r.getId() == e.getRecurringMeetingId()).forEach(e -> {
+                e.setRecurrence(r);
+            });
+        });
+    }
 }

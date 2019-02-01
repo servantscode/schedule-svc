@@ -1,38 +1,32 @@
 package org.servantscode.schedule;
 
-import org.servantscode.schedule.db.EquipmentDB;
 import org.servantscode.schedule.db.ReservationDB;
-import org.servantscode.schedule.db.RoomDB;
 
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 // Service layer helper to manage reservations for events.
 public class ReservationManager {
     private ReservationDB db;
-    private EquipmentDB equipDb;
-    private RoomDB roomDb;
 
     public ReservationManager() {
         db = new ReservationDB();
-        equipDb = new EquipmentDB();
-        roomDb = new RoomDB();
     }
 
-    // TODO: Clean this. I think I'm getting sick and it's affecting my brain.
     public List<Reservation> getReservationsForEvent(int eventId) {
-        List<Reservation> reservations = db.getReservationsForEvent(eventId);
-        for(Reservation res: reservations) {
-            if(res.getResourceType() == Reservation.ResourceType.ROOM) {
-                Room room = roomDb.getRoom(res.getResourceId());
-                if(room != null)
-                    res.setResourceName(room.getName());
-            } else if(res.getResourceType() == Reservation.ResourceType.EQUIPMENT) {
-                Equipment equip = equipDb.getEquipment(res.getResourceId());
-                if(equip != null)
-                    res.setResourceName(equip.getName());
-            }
-        }
-        return reservations;
+        return db.getReservationsForEvent(eventId);
+    }
+
+    public void populateRservations(List<Event> events, List<Reservation> reservations) {
+        Map<Integer, List<Reservation>> resMap = new HashMap<>(events.size());
+        reservations.forEach((res) -> {
+            resMap.computeIfAbsent(res.getEventId(), k -> new LinkedList<>());
+            resMap.get(res.getEventId()).add(res);
+        });
+
+        events.forEach(e -> e.setReservations(resMap.get(e.getId())));
     }
 
     public void createReservationsForEvent(List<Reservation> reservations, int eventId) {

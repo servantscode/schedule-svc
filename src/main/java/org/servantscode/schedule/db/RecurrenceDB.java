@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.db.DBAccess;
 import org.servantscode.schedule.Recurrence;
+import org.servantscode.schedule.Reservation;
 
 import java.sql.*;
 import java.time.DayOfWeek;
@@ -34,6 +35,22 @@ public class RecurrenceDB extends DBAccess {
             throw new RuntimeException("Could not retrieve recurrence: " + id, e);
         }
     }
+
+    public List<Recurrence> getEventRecurrences(ZonedDateTime startDate, ZonedDateTime endDate, String search) {
+        String sql = format("SELECT * FROM recurrences WHERE id IN (SELECT DISTINCT recurring_meeting_id FROM events e WHERE%s e.end_time > ? AND e.start_time < ?)", EventDB.optionalWhereClause(search));
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)
+        ) {
+
+            stmt.setTimestamp(1,  convert(startDate));
+            stmt.setTimestamp(2,  convert(endDate));
+
+            return processResults(stmt);
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not retrieve event recurrences.", e);
+        }
+    }
+
 
     public Recurrence create(Recurrence recurrence) {
         try (Connection conn = getConnection();

@@ -168,7 +168,7 @@ public class EventDB extends DBAccess {
         }
     }
 
-    private String optionalWhereClause(String search) {
+    protected static String optionalWhereClause(String search) {
         return !isEmpty(search) ? format(" description ILIKE '%%%s%%'", search.replace("'", "''")) : "";
     }
 }

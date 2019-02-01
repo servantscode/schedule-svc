@@ -4,6 +4,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.schedule.*;
 import org.servantscode.schedule.db.EventDB;
+import org.servantscode.schedule.db.RecurrenceDB;
+import org.servantscode.schedule.db.ReservationDB;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -57,10 +59,15 @@ public class EventSvc {
                     start.format(ISO_OFFSET_DATE_TIME), end.format(ISO_OFFSET_DATE_TIME), search));
 
             List<Event> events = db.getEvents(start, end, search);
-            for(Event event: events) {
-                event.setReservations(resMan.getReservationsForEvent(event.getId()));
-                event.setRecurrence(recurMan.getRecurrence(event.getRecurringMeetingId()));
-            }
+            List<Reservation> reservations = new ReservationDB().getEventReservations(start, end, search);
+            List<Recurrence> recurrences = new RecurrenceDB().getEventRecurrences(start, end, search);
+
+            resMan.populateRservations(events, reservations);
+            recurMan.populateRecurrences(events, recurrences);
+//            for(Event event: events) {
+//                event.setReservations(resMan.getReservationsForEvent(event.getId()));
+//                event.setRecurrence(recurMan.getRecurrence(event.getRecurringMeetingId()));
+//            }
             return events;
         } catch (Throwable t) {
             LOG.error("Retrieving events failed:", t);
