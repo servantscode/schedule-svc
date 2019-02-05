@@ -3,6 +3,7 @@ package org.servantscode.schedule.rest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.rest.PaginatedResponse;
+import org.servantscode.commons.rest.SCServiceBase;
 import org.servantscode.schedule.Equipment;
 import org.servantscode.schedule.db.EquipmentDB;
 import org.servantscode.schedule.db.EquipmentDB;
@@ -12,7 +13,7 @@ import javax.ws.rs.core.MediaType;
 import java.util.List;
 
 @Path("/equipment")
-public class EquipmentSvc {
+public class EquipmentSvc extends SCServiceBase {
     private static final Logger LOG = LogManager.getLogger(EquipmentSvc.class);
 
     private EquipmentDB db;
@@ -27,6 +28,7 @@ public class EquipmentSvc {
                                      @QueryParam("sort_field") @DefaultValue("id") String sortField,
                                      @QueryParam("partial_name") @DefaultValue("") String nameSearch) {
 
+        verifyUserAccess("equipment.list");
         try {
             LOG.trace(String.format("Retrieving equipments names (%s, %s, page: %d; %d)", nameSearch, sortField, start, count));
             return db.getEquipmentNames(nameSearch, count);
@@ -42,6 +44,7 @@ public class EquipmentSvc {
                                                      @QueryParam("sort_field") @DefaultValue("id") String sortField,
                                                      @QueryParam("partial_name") @DefaultValue("") String nameSearch) {
 
+        verifyUserAccess("equipment.list");
         try {
             int totalPeople = db.getCount(nameSearch);
 
@@ -56,6 +59,7 @@ public class EquipmentSvc {
 
     @GET @Path("/{id}") @Produces(MediaType.APPLICATION_JSON)
     public Equipment getEquipment(@PathParam("id") int id) {
+        verifyUserAccess("equipment.read");
         try {
             return db.getEquipment(id);
         } catch (Throwable t) {
@@ -67,6 +71,7 @@ public class EquipmentSvc {
     @POST
     @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
     public Equipment createEquipment(Equipment equipment) {
+        verifyUserAccess("equipment.create");
         try {
             db.create(equipment);
             LOG.info("Created equipment: " + equipment.getName());
@@ -80,6 +85,7 @@ public class EquipmentSvc {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
     public Equipment updateEquipment(Equipment equipment) {
+        verifyUserAccess("equipment.update");
         try {
             db.updateEquipment(equipment);
             LOG.info("Edited equipment: " + equipment.getName());
@@ -92,6 +98,7 @@ public class EquipmentSvc {
 
     @DELETE @Path("/{id}")
     public void deleteEquipment(@PathParam("id") int id) {
+        verifyUserAccess("equipment.delete");
         if(id <= 0)
             throw new NotFoundException();
         try {

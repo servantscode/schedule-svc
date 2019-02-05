@@ -2,16 +2,13 @@ package org.servantscode.schedule.rest;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.servantscode.commons.DateUtils;
+import org.servantscode.commons.rest.SCServiceBase;
 import org.servantscode.schedule.AvailabilityResponse;
 import org.servantscode.schedule.Reservation;
 import org.servantscode.schedule.db.ReservationDB;
 
 import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.temporal.TemporalAdjusters;
 import java.util.Comparator;
 import java.util.List;
 
@@ -20,7 +17,7 @@ import static org.servantscode.commons.DateUtils.parse;
 import static org.servantscode.commons.DateUtils.toUTC;
 
 @Path("/reservation")
-public class ReservationSvc {
+public class ReservationSvc extends SCServiceBase {
     private static final Logger LOG = LogManager.getLogger(ReservationSvc.class);
 
     ReservationDB db;
@@ -37,6 +34,7 @@ public class ReservationSvc {
                                              @QueryParam("resourceType") Reservation.ResourceType resourceType,
                                              @QueryParam("resourceId") int resourceId) {
 
+        verifyUserAccess("reservation.list");
         if(resourceId != 0 && resourceType == null)
             throw new BadRequestException();
 
@@ -64,6 +62,7 @@ public class ReservationSvc {
                                                  @QueryParam("resourceId") int resourceId,
                                                  @QueryParam("eventId") int eventId) {
 
+        verifyUserAccess("reservation.list");
         if(resourceId == 0 || resourceType == null)
             throw new BadRequestException();
 
@@ -116,6 +115,7 @@ public class ReservationSvc {
     @POST
     @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public Reservation createReservation(Reservation reservation) {
+        verifyUserAccess("reservation.create");
         try {
             Reservation resp = db.create(reservation);
             LOG.info("Created " + toString(reservation));
@@ -129,6 +129,7 @@ public class ReservationSvc {
     @PUT
     @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public Reservation updateReservation(Reservation reservation) {
+        verifyUserAccess("reservation.update");
         try {
             Reservation resp = db.update(reservation);
             LOG.info("Edited " + toString(reservation));
@@ -141,6 +142,7 @@ public class ReservationSvc {
 
     @DELETE @Path("/{id}")
     public void deleteReservation(@PathParam("id") int id) {
+        verifyUserAccess("reservation.delete");
         if(id <= 0)
             throw new NotFoundException();
         try {

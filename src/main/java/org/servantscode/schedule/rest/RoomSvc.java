@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.EnumUtils;
 import org.servantscode.commons.rest.PaginatedResponse;
+import org.servantscode.commons.rest.SCServiceBase;
 import org.servantscode.schedule.Room;
 import org.servantscode.schedule.db.RoomDB;
 
@@ -14,7 +15,7 @@ import java.util.List;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 @Path("/room")
-public class RoomSvc {
+public class RoomSvc extends SCServiceBase {
     private static final Logger LOG = LogManager.getLogger(RoomSvc.class);
 
     private RoomDB db;
@@ -29,6 +30,7 @@ public class RoomSvc {
                                      @QueryParam("sort_field") @DefaultValue("id") String sortField,
                                      @QueryParam("partial_name") @DefaultValue("") String nameSearch) {
 
+        verifyUserAccess("room.list");
         try {
             LOG.trace(String.format("Retrieving rooms names (%s, %s, page: %d; %d)", nameSearch, sortField, start, count));
             return db.getRoomNames(nameSearch, count);
@@ -44,6 +46,7 @@ public class RoomSvc {
                                             @QueryParam("sort_field") @DefaultValue("id") String sortField,
                                             @QueryParam("partial_name") @DefaultValue("") String nameSearch) {
 
+        verifyUserAccess("room.list");
         try {
             int totalPeople = db.getCount(nameSearch);
 
@@ -58,6 +61,7 @@ public class RoomSvc {
 
     @GET @Path("/{id}") @Produces(MediaType.APPLICATION_JSON)
     public Room getRoom(@PathParam("id") int id) {
+        verifyUserAccess("room.read");
         try {
             return db.getRoom(id);
         } catch (Throwable t) {
@@ -70,6 +74,7 @@ public class RoomSvc {
     @POST
     @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
     public Room createRoom(Room room) {
+        verifyUserAccess("room.create");
         try {
             db.create(room);
             LOG.info("Created room: " + room.getName());
@@ -83,6 +88,7 @@ public class RoomSvc {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
     public Room updateRoom(Room room) {
+        verifyUserAccess("room.update");
         try {
             db.updateRoom(room);
             LOG.info("Edited room: " + room.getName());
@@ -95,6 +101,7 @@ public class RoomSvc {
 
     @DELETE @Path("/{id}")
     public void deleteRoom(@PathParam("id") int id) {
+        verifyUserAccess("room.delete");
         if(id <= 0)
             throw new NotFoundException();
         try {

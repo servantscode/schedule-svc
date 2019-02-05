@@ -2,6 +2,7 @@ package org.servantscode.schedule.rest;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.servantscode.commons.rest.SCServiceBase;
 import org.servantscode.schedule.*;
 import org.servantscode.schedule.db.EventDB;
 import org.servantscode.schedule.db.RecurrenceDB;
@@ -18,7 +19,7 @@ import static java.time.temporal.TemporalAdjusters.lastDayOfMonth;
 import static org.servantscode.commons.DateUtils.parse;
 
 @Path("/event")
-public class EventSvc {
+public class EventSvc extends SCServiceBase {
     private static final Logger LOG = LogManager.getLogger(EventSvc.class);
 
     private EventDB db;
@@ -35,6 +36,7 @@ public class EventSvc {
 
     @GET @Path("/{id}") @Produces(MediaType.APPLICATION_JSON)
     public Event getEvent(@PathParam("id") int id) {
+        verifyUserAccess("event.read");
         try {
             Event event = db.getEvent(id);
             event.setReservations(resMan.getReservationsForEvent(event.getId()));
@@ -51,6 +53,7 @@ public class EventSvc {
                                  @QueryParam("end_date") String endDateString,
                                  @QueryParam("partial_description") @DefaultValue("") String search) {
 
+        verifyUserAccess("event.list");
         try {
             ZonedDateTime start = parse(startDateString, firstDayOfMonth());
             ZonedDateTime end = parse(endDateString, lastDayOfMonth());
@@ -64,10 +67,6 @@ public class EventSvc {
 
             resMan.populateRservations(events, reservations);
             recurMan.populateRecurrences(events, recurrences);
-//            for(Event event: events) {
-//                event.setReservations(resMan.getReservationsForEvent(event.getId()));
-//                event.setRecurrence(recurMan.getRecurrence(event.getRecurringMeetingId()));
-//            }
             return events;
         } catch (Throwable t) {
             LOG.error("Retrieving events failed:", t);
@@ -79,6 +78,7 @@ public class EventSvc {
     public List<Event> getUpcomingEvents(@PathParam("ministryId") int ministryId,
                                          @QueryParam("count") @DefaultValue("10") int count) {
 
+        verifyUserAccess("event.list");
         try {
             List<Event> events = db.getUpcomingMinistryEvents(ministryId, count);
             for(Event event: events) {
@@ -95,6 +95,7 @@ public class EventSvc {
     @POST
     @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
     public Event createEvent(Event event) {
+        verifyUserAccess("event.create");
         try {
             LOG.debug("Creating event for: " + event.getStartTime().toString());
             if(event.getRecurrence() != null)
@@ -109,6 +110,7 @@ public class EventSvc {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
     public Event updateEvent(Event event) {
+        verifyUserAccess("event.update");
         try {
             if(event.getRecurrence() != null)
                 return recurMan.updateRecurringEvent(event);
@@ -122,6 +124,7 @@ public class EventSvc {
     @DELETE @Path("/{id}")
     public void deleteEvent(@PathParam("id") int id,
                             @QueryParam("deleteFutureEvents") boolean deleteFutureEvents) {
+        verifyUserAccess("event.delete");
         if(id <= 0)
             throw new NotFoundException();
         try {
