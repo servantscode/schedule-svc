@@ -46,7 +46,7 @@ public class RoomDB extends DBAccess {
             names.sort(new AutoCompleteComparator(search));
             LOG.debug(String.format("Sorted %d names in %d ms.", names.size(), System.currentTimeMillis()-start));
 
-            return (count < names.size()) ? names : names.subList(0, count);
+            return (count < names.size())? names.subList(0, count): names;
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve names containing '" + search + "'", e);
         }
