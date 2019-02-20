@@ -11,7 +11,7 @@ include $(dpl)
 export $(shell sed 's/=.*//' $(dpl))
 
 # grep the version from the mix file
-VERSION=$(shell ./version.sh)
+VERSION=$(shell cat ./version.txt)
 
 
 # HELP
@@ -34,18 +34,17 @@ build-nc: ## Build the container without caching
 	docker.exe build --no-cache -t servantscode/$(APP_NAME) .
 
 run: ## Run container on port configured in `config.env`
-	docker.exe run -dit --env-file=./config.env -p=$(PORT):$(PORT) --name="$(APP_NAME)" servantscode/$(APP_NAME)
-
+	kubectl.exe create -f kube.yml 
 
 up: build run ## Run container on port configured in `config.env` (Alias to run)
 
 stop: ## Stop and remove a running container
-	docker.exe stop $(APP_NAME); docker.exe rm $(APP_NAME)
+	kubectl.exe delete -f kube.yml
 
 release: build-nc publish ## Make a release by building and publishing the `{version}` ans `latest` tagged containers to ECR
 
 # Docker publish
-publish: repo-login publish-latest publish-version ## Publish the `{version}` ans `latest` tagged containers to ECR
+publish: publish-latest publish-version ## Publish the `{version}` ans `latest` tagged containers to ECR
 
 publish-latest: tag-latest ## Publish the `latest` taged container to ECR
 	@echo 'publish latest to $(DOCKER_REPO)'
@@ -60,11 +59,11 @@ tag: tag-latest tag-version ## Generate container tags for the `{version}` ans `
 
 tag-latest: ## Generate container `{version}` tag
 	@echo 'create tag latest'
-	docker.exe tag $(APP_NAME) $(DOCKER_REPO)/servantscode/$(APP_NAME):latest
+	docker.exe tag servantscode/$(APP_NAME) $(DOCKER_REPO)/servantscode/$(APP_NAME):latest
 
 tag-version: ## Generate container `latest` tag
 	@echo 'create tag $(VERSION)'
-	docker.exe tag $(APP_NAME) $(DOCKER_REPO)/servantscode/$(APP_NAME):$(VERSION)
+	docker.exe tag servantscode/$(APP_NAME) $(DOCKER_REPO)/servantscode/$(APP_NAME):$(VERSION)
 
 # HELPERS
 
