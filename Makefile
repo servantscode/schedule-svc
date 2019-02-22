@@ -13,6 +13,12 @@ export $(shell sed 's/=.*//' $(dpl))
 # grep the version from the mix file
 VERSION=$(shell cat ./version.txt)
 
+LATEST=$(shell kubectl.exe describe deployment $(APP_NAME) | grep Image | grep latest)
+ifeq ($(LATEST),)
+TAG=:latest
+else
+TAG=
+endif
 
 # HELP
 # This will output the help for each task
@@ -37,6 +43,9 @@ run: ## Run container on port configured in `config.env`
 	kubectl.exe create -f kube.yml 
 
 up: build run ## Run container on port configured in `config.env` (Alias to run)
+
+update:
+	kubectl.exe set image deployment/$(APP_NAME) $(APP_NAME)=servantscode/$(APP_NAME)$(TAG)
 
 stop: ## Stop and remove a running container
 	kubectl.exe delete -f kube.yml
