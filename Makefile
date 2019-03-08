@@ -34,10 +34,10 @@ help: ## This help.
 # DOCKER TASKS
 # Build the container
 build: ## Build the container
-	docker.exe build -t servantscode/$(APP_NAME) .
+	docker.exe build -t servantcode/$(APP_NAME) .
 
 build-nc: ## Build the container without caching
-	docker.exe build --no-cache -t servantscode/$(APP_NAME) .
+	docker.exe build --no-cache -t servantcode/$(APP_NAME) .
 
 run: ## Run container on port configured in `config.env`
 	kubectl.exe create -f kube.yml 
@@ -45,7 +45,7 @@ run: ## Run container on port configured in `config.env`
 up: build run ## Run container on port configured in `config.env` (Alias to run)
 
 update:
-	kubectl.exe set image deployment/$(APP_NAME) $(APP_NAME)=servantscode/$(APP_NAME)$(TAG)
+	kubectl.exe set image deployment/$(APP_NAME) $(APP_NAME)=servantcode/$(APP_NAME)$(TAG)
 
 stop: ## Stop and remove a running container
 	kubectl.exe delete -f kube.yml
@@ -57,22 +57,22 @@ publish: publish-latest publish-version ## Publish the `{version}` ans `latest` 
 
 publish-latest: tag-latest ## Publish the `latest` taged container to ECR
 	@echo 'publish latest to $(DOCKER_REPO)'
-	docker.exe push $(DOCKER_REPO)/servantscode/$(APP_NAME):latest
+	docker.exe push $(DOCKER_REPO)/servantcode/$(APP_NAME):latest
 
 publish-version: tag-version ## Publish the `{version}` taged container to ECR
 	@echo 'publish $(VERSION) to $(DOCKER_REPO)'
-	docker.exe push $(DOCKER_REPO)/servantscode/$(APP_NAME):$(VERSION)
+	docker.exe push $(DOCKER_REPO)/servantcode/$(APP_NAME):$(VERSION)
 
 # Docker tagging
 tag: tag-latest tag-version ## Generate container tags for the `{version}` ans `latest` tags
 
 tag-latest: ## Generate container `{version}` tag
 	@echo 'create tag latest'
-	docker.exe tag servantscode/$(APP_NAME) $(DOCKER_REPO)/servantscode/$(APP_NAME):latest
+	docker.exe tag servantcode/$(APP_NAME) $(DOCKER_REPO)/servantcode/$(APP_NAME):latest
 
 tag-version: ## Generate container `latest` tag
 	@echo 'create tag $(VERSION)'
-	docker.exe tag servantscode/$(APP_NAME) $(DOCKER_REPO)/servantscode/$(APP_NAME):$(VERSION)
+	docker.exe tag servantcode/$(APP_NAME) $(DOCKER_REPO)/servantcode/$(APP_NAME):$(VERSION)
 
 # HELPERS
 
