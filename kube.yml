@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: schedule-svc
-        image: servantscode/schedule-svc
+        image: servantcode/schedule-svc
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
@@ -24,6 +24,23 @@ spec:
         env:
         - name: ES_JAVA_OPTS 
           value: "-Xmx128m -Xms128m"
+        - name: DB_HOST
+          value: "postgres"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-client-secrets
+              key: db_user
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-client-secrets
+              key: db_password
+        - name: JWT_KEY
+          valueFrom:
+            secretKeyRef:
+              name: jwt-key
+              key: jwt-key
 ---
 kind: Service
 apiVersion: v1
