@@ -1,6 +1,6 @@
 #Dockerfile
 
-FROM servantscode/tomcat-elk-logging
+FROM servantcode/tomcat-elk-logging
 
 LABEL maintainer="greg@servantscode.org"
 
