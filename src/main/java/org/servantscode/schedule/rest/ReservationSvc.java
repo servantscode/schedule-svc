@@ -147,7 +147,7 @@ public class ReservationSvc extends SCServiceBase {
             throw new NotFoundException();
         try {
             Reservation reservation = db.getReservation(id);
-            if(reservation == null || db.delete(id))
+            if(reservation == null || !db.delete(id))
                 throw new NotFoundException();
             LOG.info("Deleted: " + toString(reservation));
         } catch (Throwable t) {

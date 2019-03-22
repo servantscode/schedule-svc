@@ -106,7 +106,7 @@ public class RoomSvc extends SCServiceBase {
             throw new NotFoundException();
         try {
             Room room = db.getRoom(id);
-            if(room == null || db.deleteRoom(id))
+            if(room == null || !db.deleteRoom(id))
                 throw new NotFoundException();
             LOG.info("Deleted room: " + room.getName());
         } catch (Throwable t) {

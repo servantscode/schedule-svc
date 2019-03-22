@@ -103,7 +103,7 @@ public class EquipmentSvc extends SCServiceBase {
             throw new NotFoundException();
         try {
             Equipment equipment = db.getEquipment(id);
-            if(equipment == null || db.deleteEquipment(id))
+            if(equipment == null || !db.deleteEquipment(id))
                 throw new NotFoundException();
             LOG.info("Deleted equipment: " + equipment.getName());
         } catch (Throwable t) {
