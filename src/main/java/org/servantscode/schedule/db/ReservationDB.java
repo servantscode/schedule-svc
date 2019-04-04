@@ -29,7 +29,8 @@ public class ReservationDB extends DBAccess {
                     (start != null? optAnd.next() + "start_time < ? AND end_time > ? ": "") +
                     (eventId > 0? optAnd.next() + "event_id=? ": "") +
                     (personId > 0? optAnd.next() + "reserving_person_id=? " : "") +
-                    (resourceId > 0? optAnd.next() + "resource_type=? AND resource_id=?": "");
+                    (resourceId > 0? optAnd.next() + "resource_type=? AND resource_id=? ": "") +
+                    "ORDER BY start_time";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
         ) {
