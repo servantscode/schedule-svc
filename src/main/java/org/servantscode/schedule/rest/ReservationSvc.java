@@ -50,9 +50,8 @@ public class ReservationSvc extends SCServiceBase {
             LOG.trace("Retrieving reservations");
             return db.getReservations(start, end, eventId, reservingPersonId, resourceType, resourceId);
         } catch (Throwable t) {
-            LOG.error("Retrieving reservations failed:", t);
+            throw new RuntimeException("Retrieving reservations failed:", t);
         }
-        return null;
     }
 
     @GET @Path("/availability") @Produces(APPLICATION_JSON)

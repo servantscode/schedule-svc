@@ -10,7 +10,9 @@ public class Reservation {
     private int resourceId;
     private String resourceName;
     private int reservingPersonId;
+    private String reserverName;
     private int eventId;
+    private String eventDescription;
 
     private ZonedDateTime startTime;
     private ZonedDateTime endTime;
@@ -22,7 +24,9 @@ public class Reservation {
         this.resourceId = r.resourceId;
         this.resourceName = r.resourceName;
         this.reservingPersonId = r.reservingPersonId;
+        this.reserverName = r.reserverName;
         this.eventId = r.eventId;
+        this.eventDescription = r.eventDescription;
         this.startTime = r.startTime;
         this.endTime = r.endTime;
     }
@@ -48,8 +52,14 @@ public class Reservation {
     public int getReservingPersonId() { return reservingPersonId; }
     public void setReservingPersonId(int reservingPersonId) { this.reservingPersonId = reservingPersonId; }
 
+    public String getReserverName() { return reserverName; }
+    public void setReserverName(String reserverName) { this.reserverName = reserverName; }
+
     public int getEventId() { return eventId; }
     public void setEventId(int eventId) { this.eventId = eventId; }
+
+    public String getEventDescription() { return eventDescription; }
+    public void setEventDescription(String eventDescription) { this.eventDescription = eventDescription; }
 
     public ZonedDateTime getStartTime() { return startTime; }
     public void setStartTime(ZonedDateTime startTime) { this.startTime = startTime; }
