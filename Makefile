@@ -74,6 +74,9 @@ tag-version: ## Generate container `latest` tag
 	@echo 'create tag $(VERSION)'
 	docker.exe tag servantcode/$(APP_NAME) $(DOCKER_REPO)/servantcode/$(APP_NAME):$(VERSION)
 
+logs: ## Get logs from running container
+	kubectl.exe logs $(shell kubectl.exe get pods | grep $(APP_NAME) | grep Running | cut -d ' ' -f 1)
+
 # HELPERS
 
 # generate script to login to aws docker repo
