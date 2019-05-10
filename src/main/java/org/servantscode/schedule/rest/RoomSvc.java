@@ -116,7 +116,7 @@ public class RoomSvc extends SCServiceBase {
     }
 
     @GET @Path("/types") @Produces(APPLICATION_JSON)
-    public List<String> getPledgeTypes() {
+    public List<String> getRoomTypes() {
         return EnumUtils.listValues(Room.RoomType.class);
     }
 
