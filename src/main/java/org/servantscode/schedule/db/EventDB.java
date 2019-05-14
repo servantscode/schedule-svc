@@ -3,12 +3,17 @@ package org.servantscode.schedule.db;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.db.DBAccess;
+import org.servantscode.commons.search.QueryBuilder;
+import org.servantscode.commons.search.Search;
+import org.servantscode.commons.search.SearchParser;
 import org.servantscode.schedule.Event;
 
 import java.sql.*;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static java.lang.String.format;
 import static java.sql.Types.INTEGER;
@@ -18,13 +23,21 @@ import static org.servantscode.commons.StringUtils.isEmpty;
 public class EventDB extends DBAccess {
     private static final Logger LOG = LogManager.getLogger(EventDB.class);
 
-    public Event getEvent(int id) {
-        String sql = "SELECT e.*, m.name AS ministry_name FROM events e LEFT JOIN ministries m ON ministry_id=m.id WHERE e.id=?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-        ) {
+    private static final Map<String, String> FIELD_MAP = new HashMap<>(8);
+    static {
+        FIELD_MAP.put("startTime", "start_time");
+        FIELD_MAP.put("endTime", "end_time");
+        FIELD_MAP.put("description", "e.description");
+    }
 
-            stmt.setInt(1, id);
+    public Event getEvent(int id) {
+        QueryBuilder query = select("e.*", "m.name as ministry_name")
+                .from("events e")
+                .join("LEFT JOIN ministries m ON ministry_id=m.id")
+                .where("e.id=?", id);
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = query.prepareStatement(conn);
+        ) {
 
             List<Event> events = processResults(stmt);
             if(events.isEmpty())
@@ -36,14 +49,33 @@ public class EventDB extends DBAccess {
         }
     }
 
-    public List<Event> getEvents(ZonedDateTime startDate, ZonedDateTime endDate, String search) {
-        String sql = format("SELECT *, m.name AS ministry_name FROM events LEFT JOIN ministries m ON ministry_id=m.id WHERE%s end_time > ? AND start_time < ? ORDER BY start_time", optionalWhereClause(search));
+    public int getCount(String search) {
+        QueryBuilder query = select("count(1)")
+                .from("events e")
+                .search(parseSearch(search));
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
+             PreparedStatement stmt = query.prepareStatement(conn);
+             ResultSet rs = stmt.executeQuery()
         ) {
 
-            stmt.setTimestamp(1,  convert(startDate));
-            stmt.setTimestamp(2,  convert(endDate));
+            if (rs.next())
+                return rs.getInt(1);
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not retrieve events.", e);
+        }
+        return 0;
+    }
+
+    public List<Event> getEvents(String search, String sortField, int start, int count) {
+        QueryBuilder query = select("e.*", "m.name AS ministry_name")
+                .from("events e")
+                .join("LEFT JOIN ministries m ON e.ministry_id=m.id")
+                .search(parseSearch(search))
+                .sort(sortField).limit(count).offset(start);
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = query.prepareStatement(conn)
+        ) {
 
             return processResults(stmt);
         } catch (SQLException e) {
@@ -52,12 +84,16 @@ public class EventDB extends DBAccess {
     }
 
     public List<Event> getUpcomingMinistryEvents(int ministryId, int count) {
-        String sql = "SELECT *, m.name AS ministry_name FROM events LEFT JOIN ministries m ON ministry_id=m.id WHERE start_time > now() AND ministry_id=? ORDER BY start_time LIMIT ?";
+//        String sql = "SELECT *, m.name AS ministry_name FROM events LEFT JOIN ministries m ON ministry_id=m.id WHERE start_time > now() AND ministry_id=? ORDER BY start_time LIMIT ?";
+        QueryBuilder query = select("*", "m.name AS ministry_name")
+                .from("events e")
+                .join("LEFT JOIN ministries m on ministry_id=m.id")
+                .where("start_time > now()")
+                .where("ministry_id=?", ministryId)
+                .sort("start_time").limit(count);
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
+             PreparedStatement stmt = query.prepareStatement(conn)
         ) {
-            stmt.setInt(1, ministryId);
-            stmt.setInt(2, count);
 
             return processResults(stmt);
         } catch (SQLException e) {
@@ -66,19 +102,22 @@ public class EventDB extends DBAccess {
     }
 
     public List<Event> getUpcomingRecurringEvents(int recurrenceId, ZonedDateTime start) {
-        String sql = "SELECT *, m.name AS ministry_name FROM events LEFT JOIN ministries m ON ministry_id=m.id WHERE recurring_meeting_id=? AND start_time >= ? ORDER BY start_time";
+//        String sql = "SELECT *, m.name AS ministry_name FROM events LEFT JOIN ministries m ON ministry_id=m.id WHERE recurring_meeting_id=? AND start_time >= ? ORDER BY start_time";
+        QueryBuilder query = select("*", "m.name AS ministry_name")
+                .from("events e")
+                .join("LEFT JOIN ministries m on ministry_id=m.id")
+                .where("start_time > ?", start)
+                .where("recurring_meeting_id=?", recurrenceId)
+                .sort("start_time");
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
+             PreparedStatement stmt = query.prepareStatement(conn)
         ) {
-            stmt.setInt(1, recurrenceId);
-            stmt.setTimestamp(2, convert(start));
 
             return processResults(stmt);
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve events.", e);
         }
     }
-
 
     public Event create(Event event) {
         try (Connection conn = getConnection();
@@ -166,6 +205,15 @@ public class EventDB extends DBAccess {
             }
             return events;
         }
+    }
+
+    protected static Search parseSearch(String search) {
+        return new SearchParser(Event.class, "description", FIELD_MAP).parse(search);
+    }
+
+    private static String searchClause(String search) {
+        String sqlClause = parseSearch(search).getDBQueryString();
+        return isEmpty(sqlClause) ? "" : " WHERE " + sqlClause;
     }
 
     protected static String optionalWhereClause(String search) {

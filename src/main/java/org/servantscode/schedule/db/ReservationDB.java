@@ -3,7 +3,7 @@ package org.servantscode.schedule.db;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.db.DBAccess;
-import org.servantscode.schedule.Event;
+import org.servantscode.commons.search.QueryBuilder;
 import org.servantscode.schedule.Reservation;
 
 import java.sql.*;
@@ -11,8 +11,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-
-import static java.lang.String.format;
 
 @SuppressWarnings("SqlNoDataSourceInspection")
 public class ReservationDB extends DBAccess {
@@ -59,20 +57,17 @@ public class ReservationDB extends DBAccess {
         }
     }
 
-    public List<Reservation> getEventReservations(ZonedDateTime startDate, ZonedDateTime endDate, String search) {
-        String sql = format("SELECT r.*, COALESCE(ro.name, e.name) as resource_name, ev.description, p.name AS reserver_name FROM reservations r " +
-                "LEFT JOIN rooms ro ON ro.id = r.resource_id AND r.resource_type='ROOM' " +
-                "LEFT JOIN equipment e ON e.id = r.resource_id AND r.resource_type='EQUIPMENT' " +
-                "LEFT JOIN events ev ON r.event_id = ev.id " +
-                "LEFT JOIN people p ON r.reserving_person_id = p.id " +
-                "WHERE r.event_id IN (SELECT id FROM events WHERE%s end_time > ? AND start_time < ?)", EventDB.optionalWhereClause(search));
+    public List<Reservation> getEventReservations(String search) {
+        QueryBuilder query = select("r.*", "COALESCE(ro.name, e.name) as resource_name", "ev.description", "p.name AS reserver_name")
+                .from("reservations r")
+                .join("LEFT JOIN rooms ro ON ro.id = r.resource_id AND r.resource_type='ROOM' ")
+                .join("LEFT JOIN equipment e ON e.id = r.resource_id AND r.resource_type='EQUIPMENT' ")
+                .join("LEFT JOIN events ev ON r.event_id = ev.id ")
+                .join("LEFT JOIN people p ON r.reserving_person_id = p.id ")
+                .whereIdIn("r.event_id", select("id").from("events").search(EventDB.parseSearch(search)));
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
+             PreparedStatement stmt = query.prepareStatement(conn)
         ) {
-
-            stmt.setTimestamp(1,  convert(startDate));
-            stmt.setTimestamp(2,  convert(endDate));
-
             return processResults(stmt);
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve event reservations.", e);

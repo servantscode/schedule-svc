@@ -3,28 +3,26 @@ package org.servantscode.schedule.db;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.db.DBAccess;
+import org.servantscode.commons.search.QueryBuilder;
 import org.servantscode.schedule.Recurrence;
-import org.servantscode.schedule.Reservation;
 
 import java.sql.*;
 import java.time.DayOfWeek;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
-import static java.lang.String.format;
-import static java.lang.String.valueOf;
 import static java.util.Collections.emptyList;
 
 public class RecurrenceDB extends DBAccess {
     private static final Logger LOG = LogManager.getLogger(RecurrenceDB.class);
 
     public Recurrence getRecurrence(int id) {
-        String sql = "SELECT * FROM recurrences WHERE id=?";
+        QueryBuilder query = select("*").from("recurrences").where("id=?", id);
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
+             PreparedStatement stmt = query.prepareStatement(conn);
         ) {
-
-            stmt.setInt(1, id);
 
             List<Recurrence> recurrences = processResults(stmt);
             if(recurrences.isEmpty())
@@ -36,14 +34,15 @@ public class RecurrenceDB extends DBAccess {
         }
     }
 
-    public List<Recurrence> getEventRecurrences(ZonedDateTime startDate, ZonedDateTime endDate, String search) {
-        String sql = format("SELECT * FROM recurrences WHERE id IN (SELECT DISTINCT recurring_meeting_id FROM events e WHERE%s e.end_time > ? AND e.start_time < ?)", EventDB.optionalWhereClause(search));
+    public List<Recurrence> getEventRecurrences(String search) {
+        QueryBuilder query = select("*")
+                .from("recurrences")
+                .whereIdIn("id", select("DISTINCT e.recurring_meeting_id").from("events e").search(EventDB.parseSearch(search)));
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)
+             PreparedStatement stmt = conn.prepareStatement(query.getSql())
         ) {
 
-            stmt.setTimestamp(1,  convert(startDate));
-            stmt.setTimestamp(2,  convert(endDate));
+            query.fillStatement(stmt);
 
             return processResults(stmt);
         } catch (SQLException e) {

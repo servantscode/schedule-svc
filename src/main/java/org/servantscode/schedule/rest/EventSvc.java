@@ -2,6 +2,7 @@ package org.servantscode.schedule.rest;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.servantscode.commons.rest.PaginatedResponse;
 import org.servantscode.commons.rest.SCServiceBase;
 import org.servantscode.schedule.*;
 import org.servantscode.schedule.db.EventDB;
@@ -17,6 +18,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static java.time.temporal.TemporalAdjusters.firstDayOfMonth;
 import static java.time.temporal.TemporalAdjusters.lastDayOfMonth;
 import static org.servantscode.commons.DateUtils.parse;
+import static org.servantscode.commons.StringUtils.isSet;
 
 @Path("/event")
 public class EventSvc extends SCServiceBase {
@@ -49,30 +51,72 @@ public class EventSvc extends SCServiceBase {
     }
 
     @GET @Produces(MediaType.APPLICATION_JSON)
-    public List<Event> getEvents(@QueryParam("start_date") String startDateString,
-                                 @QueryParam("end_date") String endDateString,
-                                 @QueryParam("partial_description") @DefaultValue("") String search) {
+    public PaginatedResponse<Event> getEvents(@QueryParam("start") @DefaultValue("0") int start,
+                                              @QueryParam("count") @DefaultValue("32768") int count,
+                                              @QueryParam("sort_field") @DefaultValue("start_time") String sortField,
+                                              @QueryParam("search") @DefaultValue("") String search,
+                                              @QueryParam("start_date") String startDateString,
+                                              @QueryParam("end_date") String endDateString) {
 
         verifyUserAccess("event.list");
+
         try {
-            ZonedDateTime start = parse(startDateString, firstDayOfMonth());
-            ZonedDateTime end = parse(endDateString, lastDayOfMonth());
+            String finalSearch = "";
+            ZonedDateTime startDate = parse(startDateString, firstDayOfMonth());
+            if(isSet(startDateString)) {
+                finalSearch += String.format(" endTime:[%s TO *]", startDateString);
+            }
 
-            LOG.trace(String.format("Retrieving events [%s, %s], search: %s",
-                    start.format(ISO_OFFSET_DATE_TIME), end.format(ISO_OFFSET_DATE_TIME), search));
+            ZonedDateTime endDate = parse(endDateString, lastDayOfMonth());
+            if(isSet(endDateString)) {
+                finalSearch += String.format(" startTime:[* TO %s]", endDateString);
+            }
 
-            List<Event> events = db.getEvents(start, end, search);
-            List<Reservation> reservations = new ReservationDB().getEventReservations(start, end, search);
-            List<Recurrence> recurrences = new RecurrenceDB().getEventRecurrences(start, end, search);
+            finalSearch += " " + search;
+
+            LOG.trace(String.format("Retrieving events (%s, %s, page: %d; %d)", finalSearch, sortField, start, count));
+            int totalPeople = db.getCount(finalSearch);
+
+            List<Event> events ;
+            events = db.getEvents(finalSearch, sortField, start, count);
+            List<Reservation> reservations = new ReservationDB().getEventReservations(finalSearch);
+            List<Recurrence> recurrences = new RecurrenceDB().getEventRecurrences(finalSearch);
 
             resMan.populateRservations(events, reservations);
             recurMan.populateRecurrences(events, recurrences);
-            return events;
+
+            return new PaginatedResponse<>(start, events.size(), totalPeople, events);
         } catch (Throwable t) {
             LOG.error("Retrieving events failed:", t);
+            throw t;
         }
-        return null;
     }
+
+//    @GET @Produces(MediaType.APPLICATION_JSON)
+//    public List<Event> getEvents(@QueryParam("start_date") String startDateString,
+//                                 @QueryParam("end_date") String endDateString,
+//                                 @QueryParam("partial_description") @DefaultValue("") String search) {
+//
+//        verifyUserAccess("event.list");
+//        try {
+//            ZonedDateTime start = parse(startDateString, firstDayOfMonth());
+//            ZonedDateTime end = parse(endDateString, lastDayOfMonth());
+//
+//            LOG.trace(String.format("Retrieving events [%s, %s], search: %s",
+//                    start.format(ISO_OFFSET_DATE_TIME), end.format(ISO_OFFSET_DATE_TIME), search));
+//
+//            List<Event> events = db.getEvents(start, end, search);
+//            List<Reservation> reservations = new ReservationDB().getEventReservations(start, end, search);
+//            List<Recurrence> recurrences = new RecurrenceDB().getEventRecurrences(start, end, search);
+//
+//            resMan.populateRservations(events, reservations);
+//            recurMan.populateRecurrences(events, recurrences);
+//            return events;
+//        } catch (Throwable t) {
+//            LOG.error("Retrieving events failed:", t);
+//        }
+//        return null;
+//    }
 
     @GET @Path("/ministry/{ministryId}") @Produces(MediaType.APPLICATION_JSON)
     public List<Event> getUpcomingEvents(@PathParam("ministryId") int ministryId,
