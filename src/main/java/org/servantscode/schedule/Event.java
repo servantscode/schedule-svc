@@ -10,6 +10,7 @@ public class Event {
     private int id;
     private ZonedDateTime startTime;
     private ZonedDateTime endTime;
+    private String title;
     private String description;
     private int schedulerId;
     private String ministryName;
@@ -22,10 +23,10 @@ public class Event {
     private List<Reservation> reservations;
 
     public Event() {}
-
     public Event(Event e) {
         this.startTime = e.startTime;
         this.endTime = e.endTime;
+        this.title = e.title;
         this.description = e.description;
         this.schedulerId = e.schedulerId;
         this.ministryName = e.ministryName;
@@ -46,6 +47,9 @@ public class Event {
 
     public ZonedDateTime getEndTime() { return endTime; }
     public void setEndTime(ZonedDateTime endTime) { this.endTime = endTime; }
+
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
