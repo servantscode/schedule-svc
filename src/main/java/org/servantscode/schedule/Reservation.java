@@ -12,7 +12,7 @@ public class Reservation {
     private int reservingPersonId;
     private String reserverName;
     private int eventId;
-    private String eventDescription;
+    private String eventTitle;
 
     private ZonedDateTime startTime;
     private ZonedDateTime endTime;
@@ -26,7 +26,7 @@ public class Reservation {
         this.reservingPersonId = r.reservingPersonId;
         this.reserverName = r.reserverName;
         this.eventId = r.eventId;
-        this.eventDescription = r.eventDescription;
+        this.eventTitle = r.eventTitle;
         this.startTime = r.startTime;
         this.endTime = r.endTime;
     }
@@ -58,8 +58,8 @@ public class Reservation {
     public int getEventId() { return eventId; }
     public void setEventId(int eventId) { this.eventId = eventId; }
 
-    public String getEventDescription() { return eventDescription; }
-    public void setEventDescription(String eventDescription) { this.eventDescription = eventDescription; }
+    public String getEventTitle() { return eventTitle; }
+    public void setEventTitle(String eventTitle) { this.eventTitle = eventTitle; }
 
     public ZonedDateTime getStartTime() { return startTime; }
     public void setStartTime(ZonedDateTime startTime) { this.startTime = startTime; }

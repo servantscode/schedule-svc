@@ -4,6 +4,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.AutoCompleteComparator;
 import org.servantscode.commons.db.DBAccess;
+import org.servantscode.commons.search.QueryBuilder;
+import org.servantscode.commons.search.SearchParser;
 import org.servantscode.schedule.Room;
 
 import java.sql.*;
@@ -17,10 +19,16 @@ import static org.servantscode.commons.StringUtils.isEmpty;
 public class RoomDB extends DBAccess {
     private static final Logger LOG = LogManager.getLogger(RoomDB.class);
 
+    private SearchParser<Room> searchParser;
+
+    public RoomDB() {
+        this.searchParser = new SearchParser<>(Room.class, "name");
+    }
+
     public int getCount(String search) {
-        String sql = format("Select count(1) from rooms%s", optionalWhereClause(search));
+        QueryBuilder query = count().from("rooms").search(searchParser.parse(search));
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
+             PreparedStatement stmt = query.prepareStatement(conn);
              ResultSet rs = stmt.executeQuery()) {
 
             if (rs.next())
@@ -31,53 +39,24 @@ public class RoomDB extends DBAccess {
         return 0;
     }
 
-    public List<String> getRoomNames(String search, int count) {
-        String sql = format("SELECT name FROM rooms%s", optionalWhereClause(search));
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-
-            List<String> names = new ArrayList<>();
-
-            while (rs.next())
-                names.add(rs.getString(1));
-
-            long start = System.currentTimeMillis();
-            names.sort(new AutoCompleteComparator(search));
-            LOG.debug(String.format("Sorted %d names in %d ms.", names.size(), System.currentTimeMillis()-start));
-
-            return (count < names.size())? names.subList(0, count): names;
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not retrieve names containing '" + search + "'", e);
-        }
-    }
-
     public Room getRoom(int id) {
-        String sql = "SELECT * FROM rooms WHERE id=?";
+        QueryBuilder query = selectAll().from("rooms").where("id=?", id);
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
+             PreparedStatement stmt = query.prepareStatement(conn);
         ) {
-
-            stmt.setInt(1, id);
-
             List<Room> rooms = processResults(stmt);
-            if(rooms.isEmpty())
-                return null;
-
-            return rooms.get(0);
+            return firstOrNull(rooms);
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve room: " + id, e);
         }
     }
 
     public List<Room> getRooms(String search, String sortField, int start, int count) {
-        String sql = format("SELECT * FROM rooms%s ORDER BY %s LIMIT ? OFFSET ?", optionalWhereClause(search), sortField);
+        QueryBuilder query = selectAll().from("rooms").search(searchParser.parse(search))
+                .sort(sortField).limit(count).offset(start);
         try ( Connection conn = getConnection();
-              PreparedStatement stmt = conn.prepareStatement(sql)
+              PreparedStatement stmt = query.prepareStatement(conn)
         ) {
-            stmt.setInt(1, count);
-            stmt.setInt(2, start);
-
             return processResults(stmt);
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve rooms.", e);
@@ -152,9 +131,5 @@ public class RoomDB extends DBAccess {
             }
             return rooms;
         }
-    }
-
-    private String optionalWhereClause(String search) {
-        return !isEmpty(search) ? format(" WHERE name ILIKE '%%%s%%'", search.replace("'", "''")) : "";
     }
 }

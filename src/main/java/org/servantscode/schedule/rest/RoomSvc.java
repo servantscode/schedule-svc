@@ -24,22 +24,6 @@ public class RoomSvc extends SCServiceBase {
         db = new RoomDB();
     }
 
-    @GET @Path("/autocomplete") @Produces(MediaType.APPLICATION_JSON)
-    public List<String> getRoomNames(@QueryParam("start") @DefaultValue("0") int start,
-                                     @QueryParam("count") @DefaultValue("100") int count,
-                                     @QueryParam("sort_field") @DefaultValue("id") String sortField,
-                                     @QueryParam("partial_name") @DefaultValue("") String nameSearch) {
-
-        verifyUserAccess("room.list");
-        try {
-            LOG.trace(String.format("Retrieving rooms names (%s, %s, page: %d; %d)", nameSearch, sortField, start, count));
-            return db.getRoomNames(nameSearch, count);
-        } catch (Throwable t) {
-            LOG.error("Retrieving rooms failed:", t);
-            throw t;
-        }
-    }
-
     @GET @Produces(MediaType.APPLICATION_JSON)
     public PaginatedResponse<Room> getRooms(@QueryParam("start") @DefaultValue("0") int start,
                                             @QueryParam("count") @DefaultValue("10") int count,

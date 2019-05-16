@@ -30,11 +30,14 @@ public class EventDB extends DBAccess {
         FIELD_MAP.put("description", "e.description");
     }
 
-    public Event getEvent(int id) {
-        QueryBuilder query = select("e.*", "m.name as ministry_name")
+    private QueryBuilder dataQuery() {
+        return select("e.*", "m.name as ministry_name")
                 .from("events e")
-                .join("LEFT JOIN ministries m ON ministry_id=m.id")
-                .where("e.id=?", id);
+                .join("LEFT JOIN ministries m ON ministry_id=m.id");
+    }
+
+    public Event getEvent(int id) {
+        QueryBuilder query = dataQuery().where("e.id=?", id);
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
         ) {
@@ -50,7 +53,7 @@ public class EventDB extends DBAccess {
     }
 
     public int getCount(String search) {
-        QueryBuilder query = select("count(1)")
+        QueryBuilder query = count()
                 .from("events e")
                 .search(parseSearch(search));
         try (Connection conn = getConnection();
@@ -68,10 +71,7 @@ public class EventDB extends DBAccess {
     }
 
     public List<Event> getEvents(String search, String sortField, int start, int count) {
-        QueryBuilder query = select("e.*", "m.name AS ministry_name")
-                .from("events e")
-                .join("LEFT JOIN ministries m ON e.ministry_id=m.id")
-                .search(parseSearch(search))
+        QueryBuilder query = dataQuery().search(parseSearch(search))
                 .sort(sortField).limit(count).offset(start);
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn)
@@ -84,11 +84,7 @@ public class EventDB extends DBAccess {
     }
 
     public List<Event> getUpcomingMinistryEvents(int ministryId, int count) {
-//        String sql = "SELECT *, m.name AS ministry_name FROM events LEFT JOIN ministries m ON ministry_id=m.id WHERE start_time > now() AND ministry_id=? ORDER BY start_time LIMIT ?";
-        QueryBuilder query = select("*", "m.name AS ministry_name")
-                .from("events e")
-                .join("LEFT JOIN ministries m on ministry_id=m.id")
-                .where("start_time > now()")
+        QueryBuilder query = dataQuery().where("start_time > now()")
                 .where("ministry_id=?", ministryId)
                 .sort("start_time").limit(count);
         try (Connection conn = getConnection();
@@ -102,11 +98,7 @@ public class EventDB extends DBAccess {
     }
 
     public List<Event> getUpcomingRecurringEvents(int recurrenceId, ZonedDateTime start) {
-//        String sql = "SELECT *, m.name AS ministry_name FROM events LEFT JOIN ministries m ON ministry_id=m.id WHERE recurring_meeting_id=? AND start_time >= ? ORDER BY start_time";
-        QueryBuilder query = select("*", "m.name AS ministry_name")
-                .from("events e")
-                .join("LEFT JOIN ministries m on ministry_id=m.id")
-                .where("start_time > ?", start)
+        QueryBuilder query = dataQuery().where("start_time > ?", start)
                 .where("recurring_meeting_id=?", recurrenceId)
                 .sort("start_time");
         try (Connection conn = getConnection();

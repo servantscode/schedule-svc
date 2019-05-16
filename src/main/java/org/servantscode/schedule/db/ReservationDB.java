@@ -8,7 +8,6 @@ import org.servantscode.schedule.Reservation;
 
 import java.sql.*;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,41 +15,27 @@ import java.util.List;
 public class ReservationDB extends DBAccess {
     private static final Logger LOG = LogManager.getLogger(ReservationDB.class);
 
+    private QueryBuilder queryData() {
+        return select("r.*", "COALESCE(ro.name, e.name) as resource_name", "ev.title", "p.name AS reserver_name")
+                .from("reservations r")
+                .join("LEFT JOIN rooms ro ON ro.id = r.resource_id AND r.resource_type='ROOM' ")
+                .join("LEFT JOIN equipment e ON e.id = r.resource_id AND r.resource_type='EQUIPMENT' ")
+                .join("LEFT JOIN events ev ON r.event_id = ev.id ")
+                .join("LEFT JOIN people p ON r.reserving_person_id = p.id ");
+    }
+
     public List<Reservation> getReservations(ZonedDateTime start, ZonedDateTime end, int eventId, int personId,
                                              Reservation.ResourceType resourceType, int resourceId) {
+        QueryBuilder query = queryData();
+        if(start != null) query.where("r.start_time < ?", convert(end)).where("r.end_time > ?", convert(start));
+        if(eventId > 0) query.where("event_id=?", eventId);
+        if(personId > 0) query.where("reserving_person_id=?", personId);
+        if(resourceId > 0) query.where("resource_type=?", resourceType.toString()).where("resource_id=?", resourceId);
+        query.sort("start_time");
 
-        OptionalAnd optAnd = new OptionalAnd();
-        String sql = "SELECT r.*, COALESCE(ro.name, e.name) as resource_name, ev.description, p.name AS reserver_name FROM reservations r " +
-                    "LEFT JOIN rooms ro ON ro.id = r.resource_id AND r.resource_type='ROOM' " +
-                    "LEFT JOIN equipment e ON e.id = r.resource_id AND r.resource_type='EQUIPMENT' " +
-                    "LEFT JOIN events ev ON r.event_id = ev.id " +
-                    "LEFT JOIN people p ON r.reserving_person_id = p.id " +
-                    "WHERE " +
-                    (start != null? optAnd.next() + "r.start_time < ? AND r.end_time > ? ": "") +
-                    (eventId > 0? optAnd.next() + "event_id=? ": "") +
-                    (personId > 0? optAnd.next() + "reserving_person_id=? " : "") +
-                    (resourceId > 0? optAnd.next() + "resource_type=? AND resource_id=? ": "") +
-                    "ORDER BY start_time";
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
+             PreparedStatement stmt = query.prepareStatement(conn);
         ) {
-
-            int index = 0;
-            if(start != null) {
-                LOG.trace("Searching for reservations from " + start.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME) +
-                          " to " + end.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
-                stmt.setTimestamp(++index, convert(end));
-                stmt.setTimestamp(++index, convert(start));
-            }
-
-            if(eventId > 0) stmt.setInt(++index, eventId);
-            if(personId > 0) stmt.setInt(++index, personId);
-
-            if(resourceId > 0) {
-                stmt.setString(++index, resourceType.toString());
-                stmt.setInt(++index, resourceId);
-            }
-
             return processResults(stmt);
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve reservations for reserver: " + personId, e);
@@ -58,12 +43,7 @@ public class ReservationDB extends DBAccess {
     }
 
     public List<Reservation> getEventReservations(String search) {
-        QueryBuilder query = select("r.*", "COALESCE(ro.name, e.name) as resource_name", "ev.description", "p.name AS reserver_name")
-                .from("reservations r")
-                .join("LEFT JOIN rooms ro ON ro.id = r.resource_id AND r.resource_type='ROOM' ")
-                .join("LEFT JOIN equipment e ON e.id = r.resource_id AND r.resource_type='EQUIPMENT' ")
-                .join("LEFT JOIN events ev ON r.event_id = ev.id ")
-                .join("LEFT JOIN people p ON r.reserving_person_id = p.id ")
+        QueryBuilder query = queryData()
                 .whereIdIn("r.event_id", select("id").from("events").search(EventDB.parseSearch(search)));
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn)
@@ -75,17 +55,10 @@ public class ReservationDB extends DBAccess {
     }
 
     public List<Reservation> getReservationsForEvent(int eventId) {
-        String sql = "SELECT r.*, COALESCE(ro.name, e.name) as resource_name, ev.description, p.name AS reserver_name FROM reservations r " +
-                    "LEFT JOIN rooms ro ON ro.id = r.resource_id AND r.resource_type='ROOM' " +
-                    "LEFT JOIN equipment e ON e.id = r.resource_id AND r.resource_type='EQUIPMENT' " +
-                    "LEFT JOIN events ev ON r.event_id = ev.id " +
-                    "LEFT JOIN people p ON r.reserving_person_id = p.id " +
-                    "WHERE r.event_id = ?";
+        QueryBuilder query = queryData() .where("r.event_id=?", eventId);
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
+             PreparedStatement stmt = query.prepareStatement(conn);
         ) {
-
-            stmt.setInt(1, eventId);
 
             return processResults(stmt);
         } catch (SQLException e) {
@@ -94,19 +67,10 @@ public class ReservationDB extends DBAccess {
     }
 
     public List<Reservation> getReservationsForResource(Reservation.ResourceType type, int id) {
-        String sql = "SELECT r.*, COALESCE(ro.name, e.name) as resource_name, ev.description, p.name AS reserver_name FROM reservations r " +
-                    "LEFT JOIN rooms ro ON ro.id = r.resource_id AND r.resource_type='ROOM' " +
-                    "LEFT JOIN equipment e ON e.id = r.resource_id AND r.resource_type='EQUIPMENT' " +
-                    "LEFT JOIN events ev ON r.event_id = ev.id " +
-                    "LEFT JOIN people p ON r.reserving_person_id = p.id " +
-                    "WHERE resource_type=? AND resource_id=?";
+        QueryBuilder query = queryData().where("resource_type=?", type.toString()).where("resource_id=?", id);
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
+             PreparedStatement stmt = query.prepareStatement(conn);
         ) {
-
-            stmt.setString(1, type.toString());
-            stmt.setInt(2, id);
-
             return processResults(stmt);
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve reservations for " + type + ": " + id, e);
@@ -114,23 +78,12 @@ public class ReservationDB extends DBAccess {
     }
 
     public Reservation getReservation(int id) {
-        String sql = "SELECT r.*, COALESCE(ro.name, e.name) as resource_name, ev.description, p.name AS reserver_name FROM reservations r " +
-                    "LEFT JOIN rooms ro ON ro.id = r.resource_id AND r.resource_type='ROOM' " +
-                    "LEFT JOIN equipment e ON e.id = r.resource_id AND r.resource_type='EQUIPMENT' " +
-                    "LEFT JOIN events ev ON r.event_id = ev.id " +
-                    "LEFT JOIN people p ON r.reserving_person_id = p.id " +
-                    "WHERE r.id=?";
+        QueryBuilder query = queryData().where("r.id=?", id);
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
+             PreparedStatement stmt = query.prepareStatement(conn);
         ) {
-
-            stmt.setInt(1, id);
-
             List<Reservation> reservations = processResults(stmt);
-            if(reservations.isEmpty())
-                return null;
-
-            return reservations.get(0);
+            return reservations.isEmpty()? null: reservations.get(0);
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve reservation: " + id, e);
         }
@@ -219,20 +172,12 @@ public class ReservationDB extends DBAccess {
                 res.setReservingPersonId(rs.getInt("reserving_person_id"));
                 res.setReserverName(rs.getString("reserver_name"));
                 res.setEventId(rs.getInt("event_id"));
-                res.setEventDescription(rs.getString("description"));
+                res.setEventTitle(rs.getString("title"));
                 res.setStartTime(convert(rs.getTimestamp("start_time")));
                 res.setEndTime(convert(rs.getTimestamp("end_time")));
                 reservations.add(res);
             }
             return reservations;
-        }
-    }
-
-    private static class OptionalAnd {
-        private int called = 0;
-
-        public String next() {
-            return called++ > 0? "AND ": "";
         }
     }
 }

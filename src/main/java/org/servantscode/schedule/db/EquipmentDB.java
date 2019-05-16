@@ -4,6 +4,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.AutoCompleteComparator;
 import org.servantscode.commons.db.DBAccess;
+import org.servantscode.commons.search.QueryBuilder;
+import org.servantscode.commons.search.SearchParser;
 import org.servantscode.schedule.Equipment;
 
 import java.sql.*;
@@ -17,10 +19,16 @@ import static org.servantscode.commons.StringUtils.isEmpty;
 public class EquipmentDB extends DBAccess {
     private static final Logger LOG = LogManager.getLogger(EquipmentDB.class);
 
+    private SearchParser<Equipment> searchParser;
+
+    public EquipmentDB() {
+        this.searchParser = new SearchParser<>(Equipment.class, "name");
+    }
+
     public int getCount(String search) {
-        String sql = format("Select count(1) from equipment%s", optionalWhereClause(search));
+        QueryBuilder query = count().from("equipment").search(searchParser.parse(search));
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
+             PreparedStatement stmt = query.prepareStatement(conn);
              ResultSet rs = stmt.executeQuery()) {
 
             if (rs.next())
@@ -31,51 +39,25 @@ public class EquipmentDB extends DBAccess {
         return 0;
     }
 
-    public List<String> getEquipmentNames(String search, int count) {
-        String sql = format("SELECT name FROM equipment%s", optionalWhereClause(search));
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-
-            List<String> names = new ArrayList<>();
-
-            while (rs.next())
-                names.add(rs.getString(1));
-
-            names.sort(new AutoCompleteComparator(search));
-
-            return (count < names.size())? names.subList(0, count): names;
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not retrieve names containing '" + search + "'", e);
-        }
-    }
-
     public Equipment getEquipment(int id) {
-        String sql = "SELECT * FROM equipment WHERE id=?";
+        QueryBuilder query = selectAll().from("equipment").where("id=?", id);
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
+             PreparedStatement stmt = query.prepareStatement(conn);
         ) {
 
-            stmt.setInt(1, id);
-
             List<Equipment> equipment = processResults(stmt);
-            if(equipment.isEmpty())
-                return null;
-
-            return equipment.get(0);
+            return firstOrNull(equipment);
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve equipment: " + id, e);
         }
     }
 
     public List<Equipment> getEquipmentList(String search, String sortField, int start, int count) {
-        String sql = format("SELECT * FROM equipment%s ORDER BY %s LIMIT ? OFFSET ?", optionalWhereClause(search), sortField);
+        QueryBuilder query = selectAll().from("equipment").search(searchParser.parse(search))
+                .sort(sortField).limit(count).offset(start);
         try ( Connection conn = getConnection();
-              PreparedStatement stmt = conn.prepareStatement(sql)
+              PreparedStatement stmt = query.prepareStatement(conn)
         ) {
-            stmt.setInt(1, count);
-            stmt.setInt(2, start);
-
             return processResults(stmt);
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve equipment.", e);

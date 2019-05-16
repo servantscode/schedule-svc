@@ -22,22 +22,6 @@ public class EquipmentSvc extends SCServiceBase {
         db = new EquipmentDB();
     }
 
-    @GET @Path("/autocomplete") @Produces(MediaType.APPLICATION_JSON)
-    public List<String> getEquipmentNames(@QueryParam("start") @DefaultValue("0") int start,
-                                     @QueryParam("count") @DefaultValue("100") int count,
-                                     @QueryParam("sort_field") @DefaultValue("id") String sortField,
-                                     @QueryParam("partial_name") @DefaultValue("") String nameSearch) {
-
-        verifyUserAccess("equipment.list");
-        try {
-            LOG.trace(String.format("Retrieving equipments names (%s, %s, page: %d; %d)", nameSearch, sortField, start, count));
-            return db.getEquipmentNames(nameSearch, count);
-        } catch (Throwable t) {
-            LOG.error("Retrieving equipments failed:", t);
-            throw t;
-        }
-    }
-
     @GET @Produces(MediaType.APPLICATION_JSON)
     public PaginatedResponse<Equipment> getEquipment(@QueryParam("start") @DefaultValue("0") int start,
                                                      @QueryParam("count") @DefaultValue("10") int count,
