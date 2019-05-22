@@ -84,7 +84,7 @@ public class EventDB extends DBAccess {
     }
 
     public List<Event> getUpcomingMinistryEvents(int ministryId, int count) {
-        QueryBuilder query = dataQuery().where("start_time > now()")
+        QueryBuilder query = dataQuery().where("start_time >= now()")
                 .where("ministry_id=?", ministryId)
                 .sort("start_time").limit(count);
         try (Connection conn = getConnection();
@@ -98,7 +98,7 @@ public class EventDB extends DBAccess {
     }
 
     public List<Event> getUpcomingRecurringEvents(int recurrenceId, ZonedDateTime start) {
-        QueryBuilder query = dataQuery().where("start_time > ?", start)
+        QueryBuilder query = dataQuery().where("start_time >= ?", start)
                 .where("recurring_meeting_id=?", recurrenceId)
                 .sort("start_time");
         try (Connection conn = getConnection();
