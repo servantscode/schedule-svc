@@ -203,15 +203,6 @@ public class EventDB extends DBAccess {
     }
 
     protected static Search parseSearch(String search) {
-        return new SearchParser(Event.class, "description", FIELD_MAP).parse(search);
-    }
-
-    private static String searchClause(String search) {
-        String sqlClause = parseSearch(search).getDBQueryString();
-        return isEmpty(sqlClause) ? "" : " WHERE " + sqlClause;
-    }
-
-    protected static String optionalWhereClause(String search) {
-        return !isEmpty(search) ? format(" description ILIKE '%%%s%%'", search.replace("'", "''")) : "";
+        return new SearchParser<>(Event.class, "title", FIELD_MAP).parse(search);
     }
 }
