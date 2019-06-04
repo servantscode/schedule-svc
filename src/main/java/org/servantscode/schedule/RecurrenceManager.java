@@ -7,8 +7,10 @@ import org.servantscode.schedule.db.RecurrenceDB;
 import org.servantscode.schedule.db.ReservationDB;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static java.util.Collections.singletonList;
@@ -150,6 +152,21 @@ public class RecurrenceManager {
         return recurDb.getRecurrence(recurrenceId);
     }
 
+    public void populateRecurrences(List<Event> events, List<Recurrence> recurrences) {
+        recurrences.forEach(r -> {
+            events.stream().filter(e -> r.getId() == e.getRecurringMeetingId()).forEach(e -> {
+                e.setRecurrence(r);
+            });
+        });
+    }
+
+    public List<ZonedDateTime> getFutureTimes(Recurrence r, ZonedDateTime startTime) {
+        RecurrenceIterator iter = new RecurrenceIterator(r, startTime);
+        List<ZonedDateTime> futures = new LinkedList<>();
+        iter.forEachRemaining(futures::add);
+        return futures;
+    }
+
     // ----- Private -----
     private List<Event> generateEventSeries(Event e) {
         LinkedList<Event> eventSeries = new LinkedList<>();
@@ -172,13 +189,5 @@ public class RecurrenceManager {
         }
 
         return newEvent;
-    }
-
-    public void populateRecurrences(List<Event> events, List<Recurrence> recurrences) {
-        recurrences.forEach(r -> {
-            events.stream().filter(e -> r.getId() == e.getRecurringMeetingId()).forEach(e -> {
-                e.setRecurrence(r);
-            });
-        });
     }
 }

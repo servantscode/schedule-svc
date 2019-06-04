@@ -11,12 +11,14 @@ import org.servantscode.schedule.db.ReservationDB;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.List;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static java.time.temporal.TemporalAdjusters.firstDayOfMonth;
 import static java.time.temporal.TemporalAdjusters.lastDayOfMonth;
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.servantscode.commons.DateUtils.parse;
 import static org.servantscode.commons.StringUtils.isSet;
 
@@ -36,7 +38,7 @@ public class EventSvc extends SCServiceBase {
         recurMan = new RecurrenceManager();
     }
 
-    @GET @Path("/{id}") @Produces(MediaType.APPLICATION_JSON)
+    @GET @Path("/{id}") @Produces(APPLICATION_JSON)
     public Event getEvent(@PathParam("id") int id) {
         verifyUserAccess("event.read");
         try {
@@ -50,7 +52,38 @@ public class EventSvc extends SCServiceBase {
         throw new NotFoundException();
     }
 
-    @GET @Produces(MediaType.APPLICATION_JSON)
+    @GET @Path("/{id}/futureTimes") @Produces(APPLICATION_JSON)
+    public List<ZonedDateTime> getFutureTimes(@PathParam("id") int id) {
+        verifyUserAccess("event.read");
+        if(id <= 0)
+            throw new NotFoundException();
+
+        try {
+            Event event = db.getEvent(id);
+            if(event == null || event.getRecurringMeetingId() <= 0)
+                throw new NotFoundException();
+
+            return db.getFutureEventDates(event);
+        } catch (Throwable t) {
+            LOG.error("Retrieving future events failed:", t);
+            throw t;
+        }
+    }
+
+    @POST @Path("/futureTimes") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
+    public List<ZonedDateTime> calculateFutureTimes(Event e) {
+        if(e == null || e.getRecurrence() == null || e.getStartTime() == null)
+            throw new BadRequestException();
+
+        try {
+            return recurMan.getFutureTimes(e.getRecurrence(), e.getStartTime());
+        } catch (Throwable t) {
+            LOG.error("Retrieving future events failed:", t);
+            throw t;
+        }
+    }
+
+    @GET @Produces(APPLICATION_JSON)
     public PaginatedResponse<Event> getEvents(@QueryParam("start") @DefaultValue("0") int start,
                                               @QueryParam("count") @DefaultValue("32768") int count,
                                               @QueryParam("sort_field") @DefaultValue("start_time") String sortField,
@@ -77,7 +110,7 @@ public class EventSvc extends SCServiceBase {
         }
     }
 
-    @GET @Path("/ministry/{ministryId}") @Produces(MediaType.APPLICATION_JSON)
+    @GET @Path("/ministry/{ministryId}") @Produces(APPLICATION_JSON)
     public List<Event> getUpcomingEvents(@PathParam("ministryId") int ministryId,
                                          @QueryParam("count") @DefaultValue("10") int count) {
 
@@ -96,7 +129,7 @@ public class EventSvc extends SCServiceBase {
     }
 
     @POST
-    @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public Event createEvent(Event event) {
         verifyUserAccess("event.create");
         try {
@@ -111,7 +144,7 @@ public class EventSvc extends SCServiceBase {
     }
 
     @PUT
-    @Consumes(MediaType.APPLICATION_JSON) @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public Event updateEvent(Event event) {
         verifyUserAccess("event.update");
         try {

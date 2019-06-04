@@ -40,7 +40,7 @@ public class RoomDB extends DBAccess {
     }
 
     public Room getRoom(int id) {
-        QueryBuilder query = selectAll().from("rooms").where("id=?", id);
+        QueryBuilder query = selectAll().from("rooms").withId(id);
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
         ) {

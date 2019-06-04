@@ -9,11 +9,9 @@ import org.servantscode.commons.search.SearchParser;
 import org.servantscode.schedule.Event;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static java.lang.String.format;
 import static java.sql.Types.INTEGER;
@@ -49,6 +47,24 @@ public class EventDB extends DBAccess {
             return events.get(0);
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve event: " + id, e);
+        }
+    }
+
+    public List<ZonedDateTime> getFutureEventDates(Event event) {
+        QueryBuilder query = select("start_time").from("events")
+                .where("recurring_meeting_id=?", event.getRecurringMeetingId())
+                .where("start_time > ?", event.getStartTime());
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = query.prepareStatement(conn);
+             ResultSet rs = stmt.executeQuery()) {
+
+            List<ZonedDateTime> futureDates = new LinkedList<>();
+            while(rs.next())
+                futureDates.add(convert(rs.getTimestamp("start_time")));
+
+            return futureDates;
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not get future recurring dates", e);
         }
     }
 

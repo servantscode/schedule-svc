@@ -40,7 +40,7 @@ public class EquipmentDB extends DBAccess {
     }
 
     public Equipment getEquipment(int id) {
-        QueryBuilder query = selectAll().from("equipment").where("id=?", id);
+        QueryBuilder query = selectAll().from("equipment").withId(id);
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
         ) {

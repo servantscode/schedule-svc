@@ -19,7 +19,7 @@ public class RecurrenceDB extends DBAccess {
     private static final Logger LOG = LogManager.getLogger(RecurrenceDB.class);
 
     public Recurrence getRecurrence(int id) {
-        QueryBuilder query = select("*").from("recurrences").where("id=?", id);
+        QueryBuilder query = selectAll().from("recurrences").withId(id);
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
         ) {
@@ -35,14 +35,11 @@ public class RecurrenceDB extends DBAccess {
     }
 
     public List<Recurrence> getEventRecurrences(String search) {
-        QueryBuilder query = select("*")
-                .from("recurrences")
+        QueryBuilder query = selectAll().from("recurrences")
                 .whereIdIn("id", select("DISTINCT e.recurring_meeting_id").from("events e").search(EventDB.parseSearch(search)));
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query.getSql())
+             PreparedStatement stmt = query.prepareStatement(conn)
         ) {
-
-            query.fillStatement(stmt);
 
             return processResults(stmt);
         } catch (SQLException e) {
