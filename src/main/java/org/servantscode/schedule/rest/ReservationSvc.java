@@ -3,18 +3,19 @@ package org.servantscode.schedule.rest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.rest.SCServiceBase;
-import org.servantscode.schedule.AvailabilityResponse;
-import org.servantscode.schedule.Reservation;
+import org.servantscode.schedule.*;
 import org.servantscode.schedule.db.ReservationDB;
 
 import javax.ws.rs.*;
 import java.time.ZonedDateTime;
-import java.util.Comparator;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.servantscode.commons.DateUtils.parse;
-import static org.servantscode.commons.DateUtils.toUTC;
 
 @Path("/reservation")
 public class ReservationSvc extends SCServiceBase {
@@ -26,24 +27,25 @@ public class ReservationSvc extends SCServiceBase {
         db = new ReservationDB();
     }
 
-    @GET @Produces(APPLICATION_JSON)
+    @GET
+    @Produces(APPLICATION_JSON)
     public List<Reservation> getReservations(@QueryParam("startTime") String startDateString,
                                              @QueryParam("endTime") String endDateString,
-                                             @QueryParam("eventId")int eventId,
+                                             @QueryParam("eventId") int eventId,
                                              @QueryParam("reservingPerson") int reservingPersonId,
                                              @QueryParam("resourceType") Reservation.ResourceType resourceType,
                                              @QueryParam("resourceId") int resourceId) {
 
         verifyUserAccess("reservation.list");
-        if(resourceId != 0 && resourceType == null)
+        if (resourceId != 0 && resourceType == null)
             throw new BadRequestException();
 
         ZonedDateTime start = parse(startDateString);
         ZonedDateTime end = parse(endDateString);
-        if((start == null) != (end == null))
+        if ((start == null) != (end == null))
             throw new BadRequestException();
 
-        if(resourceType == null && resourceId == 0 && eventId == 0 && reservingPersonId == 0 && start == null && end == null)
+        if (resourceType == null && eventId == 0 && reservingPersonId == 0 && start == null)
             throw new BadRequestException();
 
         try {
@@ -54,65 +56,32 @@ public class ReservationSvc extends SCServiceBase {
         }
     }
 
-    @GET @Path("/availability") @Produces(APPLICATION_JSON)
-    public AvailabilityResponse checkAvailabilty(@QueryParam("startTime") String startDateString,
-                                                 @QueryParam("endTime") String endDateString,
-                                                 @QueryParam("resourceType")Reservation.ResourceType resourceType,
-                                                 @QueryParam("resourceId") int resourceId,
-                                                 @QueryParam("eventId") int eventId) {
-
+    @POST @Path("/recurring") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
+    public List<EventConflict> calculateConflicts(Event e) {
         verifyUserAccess("reservation.list");
-        if(resourceId == 0 || resourceType == null)
+
+        if(e == null || e.getRecurrence() == null)
             throw new BadRequestException();
 
-        ZonedDateTime start = toUTC(parse(startDateString));
-        ZonedDateTime end = toUTC(parse(endDateString));
-        if(start == null || end == null || start.compareTo(end)>0)
+        if(e.getStartTime() == null || e.getEndTime() == null || e.getEndTime().isBefore(e.getStartTime()))
             throw new BadRequestException();
 
-        ZonedDateTime startOfDay = start.toLocalDate().atStartOfDay(start.getZone());
-        ZonedDateTime endOfDay = end.toLocalDate().plusDays(1).atStartOfDay(end.getZone());
+        if(e.getRecurrence().getCycle() == null || e.getRecurrence().getEndDate() == null)
+            throw new BadRequestException();
+
+        if(e.getReservations().isEmpty())
+            return Collections.emptyList();
 
         try {
-            LOG.trace("Retrieving reservations");
-            List<Reservation> reservations =
-                    db.getReservations(startOfDay, endOfDay, 0,0, resourceType, resourceId);
-
-            reservations.sort(Comparator.comparing(Reservation::getStartTime));
-
-            AvailabilityResponse resp = new AvailabilityResponse(resourceType, resourceId);
-            ZonedDateTime endTime = startOfDay;
-            for(Reservation res: reservations) {
-                if(res.getEventId() == eventId)
-                    continue;
-
-                ZonedDateTime resStart = res.getStartTime();
-                ZonedDateTime resEnd = res.getEndTime();
-
-                //Handle overlapping reservations
-                if(endTime.compareTo(resStart) < 0)
-                    resp.setAvailableWindow(endTime, resStart);
-
-                //Check availability
-                if(resStart.compareTo(start)<=0 != resEnd.compareTo(start)<=0 ||
-                    resStart.compareTo(end)>=0 != resEnd.compareTo(end)>=0)
-                    resp.setAvailable(false);
-
-                if(endTime.compareTo(resEnd) < 0)
-                    endTime = resEnd;
-            }
-            if(endTime.compareTo(endOfDay) < 0)
-                resp.setAvailableWindow(endTime, endOfDay);
-
-            return resp;
-        } catch (Throwable t) {
-            LOG.error("Retrieving reservations failed:", t);
+            List<Event> events = new RecurrenceManager().generateEventSeries(e);
+            return events.stream().map(event -> findConflicts(event, e.getRecurrence())).filter(Objects::nonNull).collect(Collectors.toList());
+        } catch( Throwable t) {
+            LOG.error("Conflict check failed.", t);
+            throw t;
         }
-        return null;
     }
 
-    @POST
-    @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
+    @POST @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public Reservation createReservation(Reservation reservation) {
         verifyUserAccess("reservation.create");
         try {
@@ -125,8 +94,7 @@ public class ReservationSvc extends SCServiceBase {
         }
     }
 
-    @PUT
-    @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
+    @PUT @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public Reservation updateReservation(Reservation reservation) {
         verifyUserAccess("reservation.update");
         try {
@@ -160,5 +128,11 @@ public class ReservationSvc extends SCServiceBase {
         return String.format("Reservation(%d) of %s:%d", reservation.getId(), reservation.getResourceType(), reservation.getResourceId()) +
                 (reservation.getEventId() > 0? "for event:" + reservation.getEventId(): "") +
                 "by reserver:" + reservation.getReservingPersonId();
+    }
+
+    private EventConflict findConflicts(Event event, Recurrence r) {
+        List<Reservation> conflicts = new LinkedList<>();
+        event.getReservations().forEach(res -> conflicts.addAll(db.getConflicts(res, r.getId())));
+        return conflicts.isEmpty()? null: new EventConflict(event, conflicts);
     }
 }

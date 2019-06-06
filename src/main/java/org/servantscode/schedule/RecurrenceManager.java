@@ -167,8 +167,7 @@ public class RecurrenceManager {
         return futures;
     }
 
-    // ----- Private -----
-    private List<Event> generateEventSeries(Event e) {
+    public List<Event> generateEventSeries(Event e) {
         LinkedList<Event> eventSeries = new LinkedList<>();
         RecurrenceIterator iter = new RecurrenceIterator(e.getRecurrence(), e.getStartTime());
         while(iter.hasNext())
@@ -177,6 +176,7 @@ public class RecurrenceManager {
         return eventSeries;
     }
 
+    // ----- Private -----
     private Event cloneToDate(Event e, ZonedDateTime date) {
         Event newEvent = new Event(e);
         Duration period = Duration.between(e.getStartTime(), date);

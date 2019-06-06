@@ -9,6 +9,7 @@ import org.servantscode.schedule.Reservation;
 import java.sql.*;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @SuppressWarnings("SqlNoDataSourceInspection")
@@ -86,6 +87,24 @@ public class ReservationDB extends DBAccess {
             return reservations.isEmpty()? null: reservations.get(0);
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve reservation: " + id, e);
+        }
+    }
+
+    public List<Reservation> getConflicts(Reservation res, int recurrenceId) {
+        QueryBuilder query = queryData()
+                .where("NOT (r.start_time <= ? AND r.end_time <= ?) AND NOT (r.start_time >= ? AND r.end_time >= ?)",
+                        res.getStartTime(), res.getStartTime(), res.getEndTime(), res.getEndTime())
+                .where("r.resource_type = ?", res.getResourceType().toString())
+                .where("r.resource_id = ?", res.getResourceId())
+                .where("ev.recurring_meeting_id <> ?", recurrenceId)
+                .sort("r.start_time");
+        LOG.trace("Query is: " + query.getSql());
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = query.prepareStatement(conn);
+        ) {
+            return processResults(stmt);
+        } catch (SQLException e) {
+            throw new RuntimeException("Could not retrieve conflicts for recurring event: " + recurrenceId, e);
         }
     }
 
