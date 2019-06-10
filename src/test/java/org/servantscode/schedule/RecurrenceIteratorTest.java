@@ -19,7 +19,7 @@ public class RecurrenceIteratorTest {
     @Test
     public void testDaily() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
-        ZonedDateTime nextWeek = now.plusDays(7).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate nextWeek = now.plusDays(7).toLocalDate();
         Recurrence r = new Recurrence(DAILY, 1, nextWeek);
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -38,7 +38,7 @@ public class RecurrenceIteratorTest {
     @Test
     public void testEveryOtherDay() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
-        ZonedDateTime nextWeek = now.plusDays(8).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate nextWeek = now.plusDays(8).toLocalDate();
         Recurrence r = new Recurrence(DAILY, 2, nextWeek);
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -54,7 +54,7 @@ public class RecurrenceIteratorTest {
     @Test
     public void testMonthly() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
-        ZonedDateTime end = now.plusDays(64).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(64).toLocalDate();
         Recurrence r = new Recurrence(DAY_OF_MONTH, 1, end);
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -72,8 +72,9 @@ public class RecurrenceIteratorTest {
     @Test
     public void testEveryFourthMonthly() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
-        ZonedDateTime end = now.plusDays(366).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(366).toLocalDate();
         Recurrence r = new Recurrence(DAY_OF_MONTH, 4, end);
+
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
 
@@ -88,7 +89,7 @@ public class RecurrenceIteratorTest {
     @Test
     public void testEveryFourthSundayPancakes() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault()).with(TemporalAdjusters.dayOfWeekInMonth(4, SUNDAY));
-        ZonedDateTime end = now.plusDays(366).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(372).toLocalDate(); //A year and a week to ensure the last sunday is included
         Recurrence r = new Recurrence(WEEKDAY_OF_MONTH, 1, end);
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -110,7 +111,7 @@ public class RecurrenceIteratorTest {
     @Test
     public void testEveryOtherThirdMonday() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault()).with(TemporalAdjusters.dayOfWeekInMonth(3, MONDAY));
-        ZonedDateTime end = now.plusDays(366).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(366).toLocalDate();
         Recurrence r = new Recurrence(WEEKDAY_OF_MONTH, 2, end);
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -130,7 +131,7 @@ public class RecurrenceIteratorTest {
     @Test
     public void testYearly() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
-        ZonedDateTime end = now.plusDays(750).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(750).toLocalDate();
         Recurrence r = new Recurrence(YEARLY, 1, end);
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -148,7 +149,7 @@ public class RecurrenceIteratorTest {
     @Test
     public void testOlympics() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
-        ZonedDateTime end = now.plusDays(2000).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(2000).toLocalDate();
         Recurrence r = new Recurrence(YEARLY, 4, end);
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -164,7 +165,7 @@ public class RecurrenceIteratorTest {
     @Test
     public void testWeekly() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault()).with(next(MONDAY));
-        ZonedDateTime end = now.plusDays(34).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(34).toLocalDate();
         Recurrence r = new Recurrence(WEEKLY, 1, end, asList(MONDAY));
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -181,7 +182,7 @@ public class RecurrenceIteratorTest {
     @Test
     public void testWeeklyNotOnStartDate() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault()).with(next(SUNDAY));
-        ZonedDateTime end = now.plusDays(34).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(34).toLocalDate();
         Recurrence r = new Recurrence(WEEKLY, 1, end, asList(MONDAY));
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -199,7 +200,7 @@ public class RecurrenceIteratorTest {
     public void testMWFWeekly() {
         List<DayOfWeek> testDays = asList(MONDAY, WEDNESDAY, FRIDAY);
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault()).with(next(MONDAY));
-        ZonedDateTime end = now.plusDays(34).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(34).toLocalDate();
         Recurrence r = new Recurrence(WEEKLY, 1, end, testDays);
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -218,7 +219,7 @@ public class RecurrenceIteratorTest {
     public void testMWFWeeklyStartingFriday() {
         List<DayOfWeek> testDays = asList(FRIDAY, MONDAY, WEDNESDAY);
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault()).with(next(FRIDAY));
-        ZonedDateTime end = now.plusDays(34).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(34).toLocalDate();
         Recurrence r = new Recurrence(WEEKLY, 1, end, testDays);
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -237,7 +238,7 @@ public class RecurrenceIteratorTest {
     public void testMWFWeeklyStartingSaturday() {
         List<DayOfWeek> testDays = asList(MONDAY, WEDNESDAY, FRIDAY);
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault()).with(next(SATURDAY));
-        ZonedDateTime end = now.plusDays(34).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(34).toLocalDate();
         Recurrence r = new Recurrence(WEEKLY, 1, end, testDays);
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -255,7 +256,7 @@ public class RecurrenceIteratorTest {
     @Test
     public void testEveryOtherMonday() {
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault()).with(next(MONDAY));
-        ZonedDateTime end = now.plusDays(34).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(34).toLocalDate();
         Recurrence r = new Recurrence(WEEKLY, 2, end, asList(MONDAY));
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -273,7 +274,7 @@ public class RecurrenceIteratorTest {
     public void testEveryOtherMWFWeeklyStartingWednesday() {
         List<DayOfWeek> testDays = asList(WEDNESDAY, FRIDAY, MONDAY);
         ZonedDateTime now = LocalDateTime.parse("2019-01-30T15:00:00").atZone(ZoneId.of("America/Chicago"));
-        ZonedDateTime end = now.plusDays(34).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(34).toLocalDate();
         Recurrence r = new Recurrence(WEEKLY, 2, end, testDays);
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -292,7 +293,7 @@ public class RecurrenceIteratorTest {
     public void testEveryOtherMWFWeeklyStartingSaturday() {
         List<DayOfWeek> testDays = asList(MONDAY, WEDNESDAY, FRIDAY);
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault()).with(next(SATURDAY));
-        ZonedDateTime end = now.plusDays(34).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(34).toLocalDate();
         Recurrence r = new Recurrence(WEEKLY, 2, end, testDays);
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
@@ -310,20 +311,67 @@ public class RecurrenceIteratorTest {
     @Test
     public void testSameTimeAcrossDayLightSavings() {
         ZonedDateTime now = ZonedDateTime.parse("2019-02-01T15:00:00-06").withZoneSameInstant(ZoneId.systemDefault());
-        ZonedDateTime end = now.plusDays(200).toLocalDate().atStartOfDay(ZoneId.systemDefault());
+        LocalDate end = now.plusDays(200).toLocalDate();
         Recurrence r = new Recurrence(DAY_OF_MONTH, 6, end);
 
         RecurrenceIterator calc = new RecurrenceIterator(r, now);
 
         ZonedDateTime date = calc.next();
-        System.out.println("Now Date: " + date.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
         assertEquals("Now date has incorrect time offset", "-06:00", getZoneOffset(date).toString());
         assertEquals("Now date has incorrect localtime", now.getHour(), date.getHour());
 
         ZonedDateTime futureDate = calc.next();
-        System.out.println("Future Date: " + futureDate.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
         assertEquals("Future date has incorrect time offset", "-05:00", getZoneOffset(futureDate).toString());
         assertEquals("Future date has incorrect localtime", now.getHour(), futureDate.getHour());
+    }
+
+    @Test
+    public void testDailyWithExclusion() {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
+        LocalDate nextWeek = now.plusDays(7).toLocalDate();
+        LocalDate skipped = now.plusDays(4).toLocalDate();
+        Recurrence r = new Recurrence(DAILY, 1, nextWeek);
+        r.setExceptionDates(asList(skipped));
+
+        RecurrenceIterator calc = new RecurrenceIterator(r, now);
+
+        int i=0;
+        int days = 0;
+        while(calc.hasNext()) {
+            ZonedDateTime nextDate = calc.next();
+            assertEquals(String.format("Response %d is not correct", i), now.plusDays(days), nextDate);
+            assertTimeCarried(now, nextDate, days);
+
+            i++;
+            days++;
+            if(days == 4) days++;
+        }
+        assertEquals("Incorrect number of repetitions", 7, i);
+    }
+
+    @Test
+    public void testDailyWithExclusions() {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
+        LocalDate nextWeek = now.plusDays(7).toLocalDate();
+        LocalDate skipped = now.plusDays(4).toLocalDate();
+        LocalDate skipped2 = now.plusDays(6).toLocalDate();
+        Recurrence r = new Recurrence(DAILY, 1, nextWeek);
+        r.setExceptionDates(asList(skipped, skipped2));
+
+        RecurrenceIterator calc = new RecurrenceIterator(r, now);
+
+        int i=0;
+        int days = 0;
+        while(calc.hasNext()) {
+            ZonedDateTime nextDate = calc.next();
+            assertEquals(String.format("Response %d is not correct", i), now.plusDays(days), nextDate);
+            assertTimeCarried(now, nextDate, days);
+
+            i++;
+            days++;
+            if(days == 4 || days == 6) days++;
+        }
+        assertEquals("Incorrect number of repetitions", 6, i);
     }
 
     // ----- Private -----

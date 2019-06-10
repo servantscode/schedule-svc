@@ -98,7 +98,6 @@ public class ReservationDB extends DBAccess {
                 .where("r.resource_id = ?", res.getResourceId())
                 .where("ev.recurring_meeting_id <> ?", recurrenceId)
                 .sort("r.start_time");
-        LOG.trace("Query is: " + query.getSql());
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
         ) {

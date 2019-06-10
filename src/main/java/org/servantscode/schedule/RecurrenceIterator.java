@@ -5,6 +5,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -25,7 +26,7 @@ public class RecurrenceIterator implements Iterator<ZonedDateTime> {
         next = normalizeTimeZone(startDate);
 
         //Inclusive of last day
-        end = r.getEndDate().toLocalDate().plusDays(1).atStartOfDay(DEFAULT_TIMEZONE);
+        end = r.getEndDate().plusDays(1).atStartOfDay(DEFAULT_TIMEZONE);
 
         // It's possible someone requested a start date that is not of of the recurring week days.
         // If so, skip to the next one.
@@ -33,7 +34,7 @@ public class RecurrenceIterator implements Iterator<ZonedDateTime> {
         if(r.getCycle() == WEEKLY) {
 
             days = new ArrayList<>(r.getWeeklyDays());
-            days.sort((a,b) -> a.getValue() - b.getValue());
+            days.sort(Comparator.comparingInt(DayOfWeek::getValue));
             resetDayIter();
 
             for(DayOfWeek day: days) {
@@ -91,6 +92,8 @@ public class RecurrenceIterator implements Iterator<ZonedDateTime> {
 
         if(next.compareTo(end) > 0)
             next = null;
+        else if(r.getExceptionDates() != null && r.getExceptionDates().contains(next.toLocalDate()))
+            calculateNext();
     }
 
     private void resetDayIter() {

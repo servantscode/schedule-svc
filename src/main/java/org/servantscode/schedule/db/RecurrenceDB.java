@@ -8,12 +8,16 @@ import org.servantscode.schedule.Recurrence;
 
 import java.sql.*;
 import java.time.DayOfWeek;
-import java.time.ZonedDateTime;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.emptyList;
+import static org.servantscode.commons.StringUtils.isEmpty;
 
 public class RecurrenceDB extends DBAccess {
     private static final Logger LOG = LogManager.getLogger(RecurrenceDB.class);
@@ -50,13 +54,14 @@ public class RecurrenceDB extends DBAccess {
 
     public Recurrence create(Recurrence recurrence) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("INSERT INTO recurrences(cycle, frequency, end_date, weekly_days) values (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
+             PreparedStatement stmt = conn.prepareStatement("INSERT INTO recurrences(cycle, frequency, end_date, weekly_days, excluded_days) values (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
         ){
 
             stmt.setString(1, recurrence.getCycle().toString());
             stmt.setInt(2, recurrence.getFrequency());
-            stmt.setTimestamp(3, convert(recurrence.getEndDate()));
+            stmt.setDate(3, convert(recurrence.getEndDate()));
             stmt.setInt(4, encodeDays(recurrence.getWeeklyDays()));
+            stmt.setString(5, encodeDateList(recurrence.getExceptionDates()));
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not create " + recurrence.getCycle() + " recurrence.");
@@ -74,14 +79,15 @@ public class RecurrenceDB extends DBAccess {
 
     public Recurrence update(Recurrence recurrence) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("UPDATE recurrences SET cycle=?, frequency=?, end_date=?, weekly_days=? WHERE id=?")
+             PreparedStatement stmt = conn.prepareStatement("UPDATE recurrences SET cycle=?, frequency=?, end_date=?, weekly_days=?, excluded_days=? WHERE id=?")
         ) {
 
             stmt.setString(1, recurrence.getCycle().toString());
             stmt.setInt(2, recurrence.getFrequency());
-            stmt.setTimestamp(3, convert(recurrence.getEndDate()));
+            stmt.setDate(3, convert(recurrence.getEndDate()));
             stmt.setInt(4, encodeDays(recurrence.getWeeklyDays()));
-            stmt.setInt(5, recurrence.getId());
+            stmt.setString(5, encodeDateList(recurrence.getExceptionDates()));
+            stmt.setInt(6, recurrence.getId());
 
             if (stmt.executeUpdate() == 0)
                 throw new RuntimeException("Could not update " + recurrence.getCycle() + " recurrence.");
@@ -112,7 +118,7 @@ public class RecurrenceDB extends DBAccess {
             stmt.setInt(1, r.getId());
 
             try (ResultSet rs = stmt.executeQuery()) {
-                ZonedDateTime ts = rs.next()? convert(rs.getTimestamp(1)): null;
+                LocalDate ts = rs.next()? convert(rs.getDate(1)): null;
 
                 if(ts != null) {
                     r.setEndDate(ts);
@@ -137,8 +143,9 @@ public class RecurrenceDB extends DBAccess {
                 r.setId(rs.getInt("id"));
                 r.setCycle(Recurrence.RecurrenceCycle.valueOf(rs.getString("cycle")));
                 r.setFrequency(rs.getInt("frequency"));
-                r.setEndDate(convert(rs.getTimestamp("end_date")));
+                r.setEndDate(convert(rs.getDate("end_date")));
                 r.setWeeklyDays(decodeDays(rs.getInt("weekly_days")));
+                r.setExceptionDates(decodeDateList(rs.getString("excluded_days")));
                 recurrences.add(r);
             }
             return recurrences;
@@ -163,5 +170,20 @@ public class RecurrenceDB extends DBAccess {
                 result.add(DayOfWeek.of(i+1));
         }
         return result;
+    }
+
+    private static String encodeDateList(List<LocalDate> dates) {
+        if(dates == null || dates.isEmpty())
+            return "";
+
+        return dates.stream().map(date->date.format(DateTimeFormatter.ISO_DATE)).collect(Collectors.joining("|"));
+    }
+
+    private static List<LocalDate> decodeDateList(String dateString) {
+        if(isEmpty(dateString))
+            return emptyList();
+
+        String[] dates = dateString.split("\\|");
+        return Arrays.stream(dates).map(LocalDate::parse).collect(Collectors.toList());
     }
 }
