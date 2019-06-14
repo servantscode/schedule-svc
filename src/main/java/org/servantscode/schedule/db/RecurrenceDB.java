@@ -154,6 +154,9 @@ public class RecurrenceDB extends DBAccess {
 
     private static int encodeDays(List<DayOfWeek> days) {
         int result = 0;
+        if(days == null || days.isEmpty())
+            return 0;
+
         for(DayOfWeek day: days)
             result += 1 << day.getValue()-1;
 

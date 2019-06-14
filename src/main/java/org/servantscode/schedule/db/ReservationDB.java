@@ -28,10 +28,13 @@ public class ReservationDB extends DBAccess {
     public List<Reservation> getReservations(ZonedDateTime start, ZonedDateTime end, int eventId, int personId,
                                              Reservation.ResourceType resourceType, int resourceId) {
         QueryBuilder query = queryData();
-        if(start != null) query.where("r.start_time < ?", convert(end)).where("r.end_time > ?", convert(start));
+        if(start != null)
+            query.where("NOT (r.start_time <= ? AND r.end_time <= ?) AND NOT (r.start_time >= ? AND r.end_time >= ?)",
+                start, start, end, end);
         if(eventId > 0) query.where("event_id=?", eventId);
         if(personId > 0) query.where("reserving_person_id=?", personId);
-        if(resourceId > 0) query.where("resource_type=?", resourceType.toString()).where("resource_id=?", resourceId);
+        if(resourceType != null) query.where("resource_type=?", resourceType.toString());
+        if(resourceId > 0) query.where("resource_id=?", resourceId);
         query.sort("start_time");
 
         try (Connection conn = getConnection();

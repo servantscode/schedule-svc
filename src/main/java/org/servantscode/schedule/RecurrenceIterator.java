@@ -90,7 +90,7 @@ public class RecurrenceIterator implements Iterator<ZonedDateTime> {
                 break;
         };
 
-        if(next.compareTo(end) > 0)
+        if(next.compareTo(end) >= 0)
             next = null;
         else if(r.getExceptionDates() != null && r.getExceptionDates().contains(next.toLocalDate()))
             calculateNext();
