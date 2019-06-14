@@ -3,6 +3,7 @@ package org.servantscode.schedule;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -12,9 +13,13 @@ public class Event {
     private ZonedDateTime endTime;
     private String title;
     private String description;
+    private boolean privateEvent;
     private int schedulerId;
+    private int contactId;
     private String ministryName;
     private int ministryId;
+    private List<String> departments;
+    private List<String> categories;
 
     @JsonIgnore
     private int recurringMeetingId;
@@ -28,12 +33,18 @@ public class Event {
         this.endTime = e.endTime;
         this.title = e.title;
         this.description = e.description;
+        this.privateEvent = e.privateEvent;
         this.schedulerId = e.schedulerId;
+        this.contactId = e.contactId;
         this.ministryName = e.ministryName;
         this.ministryId = e.ministryId;
         this.recurringMeetingId = e.recurringMeetingId;
         this.recurrence = new Recurrence(e.recurrence);
         this.reservations = new LinkedList<>();
+        if(e.departments != null)
+            this.departments = new ArrayList<>(e.departments);
+        if(e.categories != null)
+            this.categories = new ArrayList<>(e.categories);
         for(Reservation r: e.reservations)
             this.reservations.add(new Reservation(r));
     }
@@ -54,8 +65,14 @@ public class Event {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
+    public boolean isPrivateEvent() { return privateEvent; }
+    public void setPrivateEvent(boolean privateEvent) { this.privateEvent = privateEvent; }
+
     public int getSchedulerId() { return schedulerId; }
     public void setSchedulerId(int schedulerId) { this.schedulerId = schedulerId; }
+
+    public int getContactId() { return contactId; }
+    public void setContactId(int contactId) { this.contactId = contactId; }
 
     public String getMinistryName() { return ministryName; }
     public void setMinistryName(String ministryName) { this.ministryName = ministryName; }
@@ -68,6 +85,12 @@ public class Event {
 
     public Recurrence getRecurrence() { return recurrence; }
     public void setRecurrence(Recurrence recurrence) { this.recurrence = recurrence; }
+
+    public List<String> getDepartments() { return departments; }
+    public void setDepartments(List<String> departments) { this.departments = departments; }
+
+    public List<String> getCategories() { return categories; }
+    public void setCategories(List<String> categories) { this.categories = categories; }
 
     public List<Reservation> getReservations() { return reservations; }
     public void setReservations(List<Reservation> reservations) { this.reservations = reservations; }

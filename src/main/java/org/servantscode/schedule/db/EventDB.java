@@ -9,13 +9,10 @@ import org.servantscode.commons.search.SearchParser;
 import org.servantscode.schedule.Event;
 
 import java.sql.*;
-import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.*;
 
-import static java.lang.String.format;
 import static java.sql.Types.INTEGER;
-import static org.servantscode.commons.StringUtils.isEmpty;
 
 @SuppressWarnings("SqlNoDataSourceInspection")
 public class EventDB extends DBAccess {
@@ -39,12 +36,7 @@ public class EventDB extends DBAccess {
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
         ) {
-
-            List<Event> events = processResults(stmt);
-            if(events.isEmpty())
-                return null;
-
-            return events.get(0);
+            return firstOrNull(processResults(stmt));
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve event: " + id, e);
         }
@@ -129,7 +121,7 @@ public class EventDB extends DBAccess {
 
     public Event create(Event event) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("INSERT INTO events(recurring_meeting_id, start_time, end_time, title, description, scheduler_id, ministry_id) values (?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
+             PreparedStatement stmt = conn.prepareStatement("INSERT INTO events(recurring_meeting_id, start_time, end_time, title, description, private_event, scheduler_id, contact_id, ministry_id, departments, categories) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
         ){
 
             stmt.setInt(1, event.getRecurringMeetingId());
@@ -137,12 +129,20 @@ public class EventDB extends DBAccess {
             stmt.setTimestamp(3, convert(event.getEndTime()));
             stmt.setString(4, event.getTitle());
             stmt.setString(5, event.getDescription());
-            stmt.setInt(6, event.getSchedulerId());
-            if(event.getMinistryId()> 0) {
-                stmt.setInt(7, event.getMinistryId());
+            stmt.setBoolean(6, event.isPrivateEvent());
+            stmt.setInt(7, event.getSchedulerId());
+            if(event.getContactId()> 0) {
+                stmt.setInt(8, event.getContactId());
             } else {
-                stmt.setNull(7, INTEGER);
+                stmt.setNull(8, INTEGER);
             }
+            if(event.getMinistryId()> 0) {
+                stmt.setInt(9, event.getMinistryId());
+            } else {
+                stmt.setNull(9, INTEGER);
+            }
+            stmt.setString(10, storeList(event.getDepartments()));
+            stmt.setString(11, storeList(event.getCategories()));
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not create event: " + event.getDescription());
@@ -160,7 +160,7 @@ public class EventDB extends DBAccess {
 
     public Event updateEvent(Event event) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("UPDATE events SET recurring_meeting_id=?, start_time=?, end_time=?, title=?, description=?, scheduler_id=?, ministry_id=? WHERE id=?")
+             PreparedStatement stmt = conn.prepareStatement("UPDATE events SET recurring_meeting_id=?, start_time=?, end_time=?, title=?, description=?, private_event=?, scheduler_id=?, contact_id=?, ministry_id=?, departments=?, categories=? WHERE id=?")
         ) {
 
             stmt.setInt(1, event.getRecurringMeetingId());
@@ -168,13 +168,21 @@ public class EventDB extends DBAccess {
             stmt.setTimestamp(3, convert(event.getEndTime()));
             stmt.setString(4, event.getTitle());
             stmt.setString(5, event.getDescription());
-            stmt.setInt(6, event.getSchedulerId());
-            if(event.getMinistryId()> 0) {
-                stmt.setInt(7, event.getMinistryId());
+            stmt.setBoolean(6, event.isPrivateEvent());
+            stmt.setInt(7, event.getSchedulerId());
+            if(event.getContactId()> 0) {
+                stmt.setInt(8, event.getContactId());
             } else {
-                stmt.setNull(7, INTEGER);
+                stmt.setNull(8, INTEGER);
             }
-            stmt.setInt(8, event.getId());
+            if(event.getMinistryId()> 0) {
+                stmt.setInt(9, event.getMinistryId());
+            } else {
+                stmt.setNull(9, INTEGER);
+            }
+            stmt.setString(10, storeList(event.getDepartments()));
+            stmt.setString(11, storeList(event.getCategories()));
+            stmt.setInt(12, event.getId());
 
             if (stmt.executeUpdate() == 0)
                 throw new RuntimeException("Could not update event: " + event.getDescription());
@@ -209,9 +217,13 @@ public class EventDB extends DBAccess {
                 e.setEndTime(convert(rs.getTimestamp("end_time")));
                 e.setTitle(rs.getString("title"));
                 e.setDescription(rs.getString("description"));
+                e.setPrivateEvent(rs.getBoolean("private_event"));
                 e.setSchedulerId(rs.getInt("scheduler_id"));
+                e.setContactId(rs.getInt("contact_id"));
                 e.setMinistryId(rs.getInt("ministry_id"));
                 e.setMinistryName(rs.getString("ministry_name"));
+                e.setDepartments(parseList(rs.getString("departments")));
+                e.setCategories(parseList(rs.getString("categories")));
                 events.add(e);
             }
             return events;
