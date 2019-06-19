@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.servantscode.commons.DateUtils.parse;
+import static org.servantscode.schedule.Recurrence.RecurrenceCycle.CUSTOM;
 
 @Path("/reservation")
 public class ReservationSvc extends SCServiceBase {
@@ -66,7 +67,8 @@ public class ReservationSvc extends SCServiceBase {
         if(e.getStartTime() == null || e.getEndTime() == null || e.getEndTime().isBefore(e.getStartTime()))
             throw new BadRequestException();
 
-        if(e.getRecurrence().getCycle() == null || e.getRecurrence().getEndDate() == null)
+        if(e.getRecurrence().getCycle() == null ||
+            (e.getRecurrence().getEndDate() == null && e.getRecurrence().getCycle() != CUSTOM))
             throw new BadRequestException();
 
         if(e.getReservations().isEmpty())

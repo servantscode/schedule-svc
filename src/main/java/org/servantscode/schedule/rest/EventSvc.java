@@ -10,29 +10,27 @@ import org.servantscode.schedule.db.RecurrenceDB;
 import org.servantscode.schedule.db.ReservationDB;
 
 import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import java.time.LocalDate;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.SecurityContext;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
-import static java.time.temporal.TemporalAdjusters.firstDayOfMonth;
-import static java.time.temporal.TemporalAdjusters.lastDayOfMonth;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static org.servantscode.commons.DateUtils.parse;
-import static org.servantscode.commons.StringUtils.isSet;
+import static org.servantscode.schedule.Recurrence.RecurrenceCycle.CUSTOM;
 
 @Path("/event")
 public class EventSvc extends SCServiceBase {
     private static final Logger LOG = LogManager.getLogger(EventSvc.class);
 
     private EventDB db;
+    RecurrenceDB recurDb;
     private ReservationManager resMan;
     private EventManager eventMan;
     private RecurrenceManager recurMan;
 
     public EventSvc() {
         db = new EventDB();
+        recurDb = new RecurrenceDB();
         resMan = new ReservationManager();
         eventMan = new EventManager();
         recurMan = new RecurrenceManager();
@@ -76,6 +74,8 @@ public class EventSvc extends SCServiceBase {
             throw new BadRequestException();
 
         try {
+            if(e.getRecurrence().getCycle() == CUSTOM)
+                return db.getFutureEventDates(e);
             return recurMan.getFutureTimes(e.getRecurrence(), e.getStartTime());
         } catch (Throwable t) {
             LOG.error("Retrieving future events failed:", t);
@@ -143,13 +143,45 @@ public class EventSvc extends SCServiceBase {
         }
     }
 
+    @POST @Path("/series")
+    @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
+    public Event createEventSeries(List<Event> events) {
+        verifyUserAccess("event.create");
+
+        if(events.isEmpty())
+            throw new BadRequestException();
+
+        try {
+            LOG.debug("Creating event for: " + events.get(0).getStartTime().toString());
+            Recurrence recur = new Recurrence();
+            recur.setCycle(CUSTOM);
+            recurDb.create(recur); //Side effect: Sets Recurrence id
+            events.forEach(event -> {
+                event.setRecurrence(recur);
+                event.setRecurringMeetingId(recur.getId());
+            });
+
+            return recurMan.createEventSeries(events);
+        } catch (Throwable t) {
+            LOG.error("Creating event series failed:", t);
+            throw t;
+        }
+    }
+
     @PUT
     @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
-    public Event updateEvent(Event event) {
+    public Event updateEvent(Event event,
+                             @Context SecurityContext securityContext) {
         verifyUserAccess("event.update");
         try {
+            Event dbEvent = db.getEvent(event.getId());
+            if(dbEvent == null)
+                throw new NotFoundException();
+            if(event.getSchedulerId() != getUserId(securityContext) && !userHasAccess("admin.event.edit"))
+                throw new ForbiddenException();
+
             if(event.getRecurrence() != null)
-                return recurMan.updateRecurringEvent(event);
+                return recurMan.updateRecurringEvent(event, dbEvent);
             return eventMan.updateEvent(event);
         } catch (Throwable t) {
             LOG.error("Updating event failed:", t);
@@ -157,9 +189,45 @@ public class EventSvc extends SCServiceBase {
         }
     }
 
+    @PUT @Path("/series")
+    @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
+    public Event updateEventSeries(List<Event> events,
+                                   @Context SecurityContext securityContext) {
+        verifyUserAccess("event.update");
+
+        int userId = getUserId(securityContext);
+        if(events.stream().anyMatch(event -> event.getSchedulerId() != userId) && !userHasAccess("admin.event.edit"))
+            throw new ForbiddenException();
+
+        try {
+            Event dbEvent = db.getEvent(events.get(0).getId());
+            if (dbEvent == null)
+                throw new NotFoundException();
+
+            Recurrence recur = new Recurrence();
+            recur.setCycle(CUSTOM);
+            recur.setId(dbEvent.getRecurringMeetingId());
+
+            if (recur.getId() > 0)
+                recurDb.update(recur);
+            else
+                recurDb.create(recur); //Side effect: Sets Recurrence id
+
+            events.forEach(event -> {
+                event.setRecurrence(recur);
+                event.setRecurringMeetingId(recur.getId());
+            });
+            return recurMan.updateEventSeries(dbEvent, events);
+        } catch (Throwable t) {
+            LOG.error("Updating event series failed:", t);
+            throw t;
+        }
+    }
+
     @DELETE @Path("/{id}")
     public void deleteEvent(@PathParam("id") int id,
-                            @QueryParam("deleteFutureEvents") boolean deleteFutureEvents) {
+                            @QueryParam("deleteFutureEvents") boolean deleteFutureEvents,
+                            @Context SecurityContext securityContext) {
         verifyUserAccess("event.delete");
         if(id <= 0)
             throw new NotFoundException();
@@ -167,6 +235,8 @@ public class EventSvc extends SCServiceBase {
             Event event = db.getEvent(id);
             if(event == null)
                 throw new NotFoundException();
+            if(event.getSchedulerId() != getUserId(securityContext) && !userHasAccess("admin.event.delete"))
+                throw new ForbiddenException();
 
             if(event.getRecurringMeetingId() > 0 && deleteFutureEvents)
                 recurMan.deleteRecurringEvent(event);

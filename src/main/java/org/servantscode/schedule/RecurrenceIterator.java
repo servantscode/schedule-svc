@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
+import static org.servantscode.schedule.Recurrence.RecurrenceCycle.CUSTOM;
 import static org.servantscode.schedule.Recurrence.RecurrenceCycle.WEEKLY;
 
 public class RecurrenceIterator implements Iterator<ZonedDateTime> {
@@ -22,6 +23,9 @@ public class RecurrenceIterator implements Iterator<ZonedDateTime> {
     private static final ZoneId DEFAULT_TIMEZONE = ZoneId.of("America/Chicago");
 
     public RecurrenceIterator(Recurrence r, ZonedDateTime startDate) {
+        if(r.getCycle() == CUSTOM)
+            throw new IllegalArgumentException("Cannot recur a custom recurrence. Please create/update by event list.");
+
         this.r = r;
         next = normalizeTimeZone(startDate);
 

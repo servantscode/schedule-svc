@@ -6,7 +6,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 public class Recurrence {
-    public enum RecurrenceCycle {DAILY, WEEKLY, DAY_OF_MONTH, WEEKDAY_OF_MONTH, YEARLY};
+    public enum RecurrenceCycle {DAILY, WEEKLY, DAY_OF_MONTH, WEEKDAY_OF_MONTH, YEARLY, CUSTOM};
 
     private int id;
     private RecurrenceCycle cycle;

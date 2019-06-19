@@ -23,6 +23,7 @@ public class EventDB extends DBAccess {
         FIELD_MAP.put("startTime", "start_time");
         FIELD_MAP.put("endTime", "end_time");
         FIELD_MAP.put("description", "e.description");
+        FIELD_MAP.put("recurringMeetingId", "recurring_meeting_id");
     }
 
     private QueryBuilder dataQuery() {

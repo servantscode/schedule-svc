@@ -7,13 +7,12 @@ import org.servantscode.schedule.db.RecurrenceDB;
 import org.servantscode.schedule.db.ReservationDB;
 
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static java.util.Collections.singletonList;
+import static org.servantscode.schedule.Recurrence.RecurrenceCycle.CUSTOM;
 
 public class RecurrenceManager {
     private static final Logger LOG = LogManager.getLogger(RecurrenceManager.class);
@@ -49,6 +48,13 @@ public class RecurrenceManager {
 
         List<Event> futureEvents = generateEventSeries(event);
 
+        return createEventSeries(futureEvents);
+    }
+
+    public Event createEventSeries(List<Event> futureEvents) {
+        if(futureEvents.isEmpty())
+            return null;
+
         LinkedList<Event> createdEvents = new LinkedList<>();
         LinkedList<Event> failedEvents = new LinkedList<>();
 
@@ -62,11 +68,11 @@ public class RecurrenceManager {
         }
 
         LOG.info(String.format("Created recurring reservation %d. (created:%d, failed:%d)",
-                event.getRecurringMeetingId(),  createdEvents.size(), failedEvents.size()));
+                futureEvents.get(0).getRecurringMeetingId(), createdEvents.size(), failedEvents.size()));
         return createdEvents.isEmpty()? null: createdEvents.get(0);
     }
 
-    public Event updateRecurringEvent(Event event) {
+    public Event updateRecurringEvent(Event event, Event existingEvent) {
         Recurrence r = event.getRecurrence();
         if(r.getCycle() == Recurrence.RecurrenceCycle.WEEKLY && r.getWeeklyDays().isEmpty())
             throw new IllegalArgumentException();
@@ -83,15 +89,18 @@ public class RecurrenceManager {
         }
         event.setRecurringMeetingId(r.getId());
 
-        Event existingEvent = db.getEvent(event.getId());
-        List<Event> existingEvents;
-        if(existingEvent.getRecurringMeetingId() > 0) {
-            existingEvents = db.getUpcomingRecurringEvents(existingEvent.getRecurringMeetingId(), existingEvent.getStartTime());
-        } else {
-            existingEvents = singletonList(existingEvent);
-        }
-
         List<Event> futureEvents = generateEventSeries(event);
+        return updateEventSeries(existingEvent, futureEvents);
+    }
+
+    // Update the existing chain of events starting with existingEvent to match futureEvents.
+    // NOTE: This process will re-use existing eventIds if possible. ID -> date/time linkage is not assured.
+    // TODO: Analyze this problem for registrations in the future.
+    public Event updateEventSeries(Event existingEvent, List<Event> futureEvents) {
+
+        List<Event> existingEvents = existingEvent.getRecurringMeetingId() > 0?
+            db.getUpcomingRecurringEvents(existingEvent.getRecurringMeetingId(), existingEvent.getStartTime()):
+            singletonList(existingEvent);
 
         LinkedList<Event> updatedEvents = new LinkedList<>();
         LinkedList<Event> createdEvents = new LinkedList<>();
@@ -117,7 +126,7 @@ public class RecurrenceManager {
                     createdEvents.add(eventMan.createEvent(newEvent));
                 }
             } catch (Exception e) {
-                LOG.error("Could not create event for: " + newEvent.getStartTime().format(ISO_OFFSET_DATE_TIME), e);
+                LOG.error("Could not create/update event for: " + newEvent.getStartTime().format(ISO_OFFSET_DATE_TIME), e);
                 failedEvents.add(newEvent);
             }
         }
@@ -129,7 +138,7 @@ public class RecurrenceManager {
         }
 
         LOG.info(String.format("Updated recurring reservation %d. (updated:%d, created:%d, deleted:%d, failed:%d)",
-                event.getRecurringMeetingId(), updatedEvents.size(), createdEvents.size(), deleted, failedEvents.size()));
+                futureEvents.get(0).getRecurringMeetingId(), updatedEvents.size(), createdEvents.size(), deleted, failedEvents.size()));
 
         return !updatedEvents.isEmpty()? updatedEvents.get(0): !createdEvents.isEmpty()? createdEvents.get(0): null;
     }
@@ -168,6 +177,12 @@ public class RecurrenceManager {
     }
 
     public List<Event> generateEventSeries(Event e) {
+        if(e.getRecurrence().getCycle() == CUSTOM) {
+            List<Event> events = db.getUpcomingRecurringEvents(e.getRecurringMeetingId(), e.getStartTime());
+            events.forEach(event -> event.setReservations(resDb.getReservationsForEvent(event.getId())));
+            return events;
+        }
+
         LinkedList<Event> eventSeries = new LinkedList<>();
         RecurrenceIterator iter = new RecurrenceIterator(e.getRecurrence(), e.getStartTime());
         while(iter.hasNext())
