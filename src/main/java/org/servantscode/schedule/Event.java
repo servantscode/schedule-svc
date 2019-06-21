@@ -45,8 +45,9 @@ public class Event {
             this.departments = new ArrayList<>(e.departments);
         if(e.categories != null)
             this.categories = new ArrayList<>(e.categories);
-        for(Reservation r: e.reservations)
-            this.reservations.add(new Reservation(r));
+        if(e.reservations != null)
+            for(Reservation r: e.reservations)
+                this.reservations.add(new Reservation(r));
     }
 
     // ----- Accessors -----

@@ -30,6 +30,9 @@ public class ReservationManager {
     }
 
     public void createReservationsForEvent(List<Reservation> reservations, int eventId) {
+        if(reservations == null)
+            return;
+
         //TODO: Look for conflicts, reject/override by permissions
         for(Reservation r: reservations) {
             r.setId(eventId); //Just to be sure
@@ -41,14 +44,16 @@ public class ReservationManager {
         //TODO: Look for conflicts, reject/override by permissions
         //TODO: Consider better matching on poorly id'd input
         List<Reservation> existing = db.getReservationsForEvent(eventId);
-        for(Reservation r: reservations) {
-            if(r.getId() > 0) {
-                r.setEventId(eventId); //Just to be sure
-                db.update(r);
-                existing.removeIf((res) -> res.getId() == r.getId());
-            } else {
-                r.setEventId(eventId); //Just to be sure
-                db.create(r);
+        if(reservations != null) {
+            for (Reservation r : reservations) {
+                if (r.getId() > 0) {
+                    r.setEventId(eventId); //Just to be sure
+                    db.update(r);
+                    existing.removeIf((res) -> res.getId() == r.getId());
+                } else {
+                    r.setEventId(eventId); //Just to be sure
+                    db.create(r);
+                }
             }
         }
 

@@ -21,8 +21,10 @@ public class EventManager {
     public Event createEvent(Event event) {
         Event resp = db.create(event);
         List<Reservation> reservations = event.getReservations();
-        for(Reservation res: reservations)
-            res.setEventId(resp.getId());
+        if(reservations != null) {
+            for (Reservation res : reservations)
+                res.setEventId(resp.getId());
+        }
         resMan.createReservationsForEvent(reservations, resp.getId());
         LOG.info("Created event: " + event.getDescription());
         return resp;
