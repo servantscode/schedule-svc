@@ -76,7 +76,31 @@ public class ReservationSvc extends SCServiceBase {
 
         try {
             List<Event> events = new RecurrenceManager().generateEventSeries(e);
-            return events.stream().map(event -> findConflicts(event, e.getRecurrence())).filter(Objects::nonNull).collect(Collectors.toList());
+            return events.stream().map(event -> findConflicts(event, e.getRecurrence().getId())).filter(Objects::nonNull).collect(Collectors.toList());
+        } catch( Throwable t) {
+            LOG.error("Conflict check failed.", t);
+            throw t;
+        }
+    }
+
+    @POST @Path("/custom") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
+    public List<EventConflict> calculateConflicts(List<Event> events) {
+        verifyUserAccess("reservation.list");
+
+        if(events == null || events.isEmpty())
+            throw new BadRequestException();
+
+        for(Event e: events) {
+            if (e.getStartTime() == null || e.getEndTime() == null || e.getEndTime().isBefore(e.getStartTime()))
+                throw new BadRequestException();
+        }
+
+        if(events.stream().allMatch(ev -> ev.getReservations().isEmpty()))
+            return Collections.emptyList();
+
+        try {
+            int recurrenceId = events.get(0).getRecurrence().getId();
+            return events.stream().map(event -> findConflicts(event, recurrenceId)).filter(Objects::nonNull).collect(Collectors.toList());
         } catch( Throwable t) {
             LOG.error("Conflict check failed.", t);
             throw t;
@@ -132,9 +156,9 @@ public class ReservationSvc extends SCServiceBase {
                 "by reserver:" + reservation.getReservingPersonId();
     }
 
-    private EventConflict findConflicts(Event event, Recurrence r) {
+    private EventConflict findConflicts(Event event, int recurrenceId) {
         List<Reservation> conflicts = new LinkedList<>();
-        event.getReservations().forEach(res -> conflicts.addAll(db.getConflicts(res, r.getId())));
+        event.getReservations().forEach(res -> conflicts.addAll(db.getConflicts(res, recurrenceId)));
         return conflicts.isEmpty()? null: new EventConflict(event, conflicts);
     }
 }

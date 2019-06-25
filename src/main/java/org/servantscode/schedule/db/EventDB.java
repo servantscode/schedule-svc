@@ -43,10 +43,10 @@ public class EventDB extends DBAccess {
         }
     }
 
-    public List<ZonedDateTime> getFutureEventDates(Event event) {
+    public List<ZonedDateTime> getFutureEvents(Event event) {
         QueryBuilder query = select("start_time").from("events")
                 .where("recurring_meeting_id=?", event.getRecurringMeetingId())
-                .where("start_time > ?", event.getStartTime());
+                .where("start_time >= ?", event.getStartTime());
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
              ResultSet rs = stmt.executeQuery()) {

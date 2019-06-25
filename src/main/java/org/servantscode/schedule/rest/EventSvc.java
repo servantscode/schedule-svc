@@ -50,18 +50,23 @@ public class EventSvc extends SCServiceBase {
         throw new NotFoundException();
     }
 
-    @GET @Path("/{id}/futureTimes") @Produces(APPLICATION_JSON)
-    public List<ZonedDateTime> getFutureTimes(@PathParam("id") int id) {
+    @GET @Path("/{id}/futureEvents") @Produces(APPLICATION_JSON)
+    public List<Event> getFutureEvents(@PathParam("id") int id) {
         verifyUserAccess("event.read");
         if(id <= 0)
             throw new NotFoundException();
 
         try {
-            Event event = db.getEvent(id);
-            if(event == null || event.getRecurringMeetingId() <= 0)
+            Event dbEvent = db.getEvent(id);
+            if(dbEvent == null || dbEvent.getRecurringMeetingId() <= 0)
                 throw new NotFoundException();
 
-            return db.getFutureEventDates(event);
+            List<Event> events = db.getUpcomingRecurringEvents(dbEvent.getRecurringMeetingId(), dbEvent.getStartTime());
+            for(Event event: events) {
+                event.setReservations(resMan.getReservationsForEvent(event.getId()));
+                event.setRecurrence(recurMan.getRecurrence(event.getRecurringMeetingId()));
+            }
+            return events;
         } catch (Throwable t) {
             LOG.error("Retrieving future events failed:", t);
             throw t;
@@ -75,7 +80,7 @@ public class EventSvc extends SCServiceBase {
 
         try {
             if(e.getRecurrence().getCycle() == CUSTOM)
-                return db.getFutureEventDates(e);
+                return db.getFutureEvents(e);
             return recurMan.getFutureTimes(e.getRecurrence(), e.getStartTime());
         } catch (Throwable t) {
             LOG.error("Retrieving future events failed:", t);
