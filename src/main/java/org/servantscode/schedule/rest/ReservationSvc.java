@@ -95,7 +95,7 @@ public class ReservationSvc extends SCServiceBase {
                 throw new BadRequestException();
         }
 
-        if(events.stream().allMatch(ev -> ev.getReservations().isEmpty()))
+        if(events.stream().allMatch(ev -> ev.getReservations() == null || ev.getReservations().isEmpty()))
             return Collections.emptyList();
 
         try {
