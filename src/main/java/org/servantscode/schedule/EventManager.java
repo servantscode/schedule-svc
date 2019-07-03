@@ -18,6 +18,11 @@ public class EventManager {
         resMan = new ReservationManager();
     }
 
+    public EventManager(EventDB db, ReservationManager resMan) {
+        this.db = db;
+        this.resMan = resMan;
+    }
+
     public Event createEvent(Event event) {
         Event resp = db.create(event);
         List<Reservation> reservations = event.getReservations();
