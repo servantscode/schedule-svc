@@ -48,6 +48,7 @@ public class EventManagerTest {
         Event resp = ev.createEvent(e);
         verify(db, times(1)).create(e);
         verify(resMan, times(1)).createReservationsForEvent(e.getReservations(), e.getId());
+
         assertEquals("Different passed and returned Event Object", e, resp);
         assertEquals("Difference between returned and expected Event values: Id", 0, resp.getId());
         assertNull("Difference between returned and expected Event values: startTime", resp.getStartTime());
@@ -69,115 +70,49 @@ public class EventManagerTest {
     public void createEventTestFilled() {
         when(db.create(any(Event.class))).then(returnsFirstArg());
 
-        Event e = new Event();
-        e.setId(1);
-        ZonedDateTime zd = ZonedDateTime.of(LocalDateTime.of(LocalDate.of(2015, 10, 21), LocalTime.of(16, 49, 20)), ZoneId.of("Etc/GMT-7"));
-        e.setStartTime(zd);
-        e.setEndTime(zd.plusHours(3));
-        e.setTitle("Destination");
-        e.setDescription("Just a test");
-        e.setPrivateEvent(false);
-        e.setSchedulerId(1);
-        e.setContactId(1);
-        e.setDepartments(new ArrayList<>());
-        e.getDepartments().add("Department of Time Travel");
-        e.getDepartments().add("Department of Safety");
-        e.setCategories(new ArrayList<>());
-        e.getCategories().add("Time");
-        e.getCategories().add("Marty McFly");
-        e.getCategories().add("Routine");
-        Reservation r = new Reservation();
-        r.setId(2);
-        r.setResourceType(Reservation.ResourceType.EQUIPMENT);
-        r.setResourceId(2);
-        r.setResourceName("DeLorean");
-        r.setReservingPersonId(1);
-        r.setReserverName("Dr. Emmett Brown");
-        //purposefully wrong value, to be corrected in create
-        r.setEventId(5);
-        r.setEventTitle("Test");
-        r.setStartTime(e.getStartTime());
-        r.setEndTime(e.getEndTime());
-        e.setReservations(new ArrayList<>());
-        e.getReservations().add(r);
-
+        Event e = getTestEvent();
         Event resp = ev.createEvent(e);
+
         verify(db, times(1)).create(e);
-        verify(resMan, times(1)).createReservationsForEvent(e.getReservations(), 1);
-        assertEquals("Different passed and returned Event Object", e, resp);
-        assertEquals("Difference between returned and expected Event values: Id", 1, resp.getId());
-        assertTrue("Difference between returned and expected Event values: startTime", zd.isEqual(resp.getStartTime()));
-        assertTrue("Difference between returned and expected Event values: endTime", zd.plusHours(3).isEqual(resp.getEndTime()));
-        assertEquals("Difference between returned and expected Event values: title", "Destination", resp.getTitle());
-        assertEquals("Difference between returned and expected Event values: description", "Just a test", resp.getDescription());
-        assertFalse("Difference between returned and expected Event Values: isPrivateEvent", resp.isPrivateEvent());
-        assertEquals("Difference between returned and expected Event values: schedulerId", 1, resp.getSchedulerId());
-        assertEquals("Difference between returned and expected Event values: contactId", 1, resp.getContactId());
+        verify(resMan, times(1)).createReservationsForEvent(e.getReservations(), 0);
 
-        List<String> departments = resp.getDepartments();
-        assertEquals("Wrong size of department list", 2, departments.size());
-        assertEquals("Difference between returned and expected Department values", "Department of Time Travel", departments.get(0));
-        assertEquals("Difference between returned and expected Department values", "Department of Safety", departments.get(1));
-
-        List<String> categories = resp.getCategories();
-        assertEquals("Wrong size of category list", 3, categories.size());
-        assertEquals("Difference between returned and expected category values", "Time", categories.get(0));
-        assertEquals("Difference between returned and expected category values", "Marty McFly", categories.get(1));
-        assertEquals("Difference between returned and expected category values", "Routine", categories.get(2));
-
-        Reservation res = resp.getReservations().get(0);
-        assertEquals("Difference between passed and returned Reservation Object", r, res);
-        assertEquals("Difference in reservation value: Id", 2, res.getId());
-        assertEquals("Difference in reservation enumerator", Reservation.ResourceType.EQUIPMENT, res.getResourceType());
-        assertEquals("Difference in reservation value: resourceId", 2, res.getResourceId());
-        assertEquals("Difference in reservation value: resourceName", "DeLorean", res.getResourceName());
-        assertEquals("Difference in reservation value: reservingPersonId", 1, r.getReservingPersonId());
-        assertEquals("Difference in reservation value: reserverName", "Dr. Emmett Brown", res.getReserverName());
-        assertEquals("Difference in reservation value: eventId", 1, r.getEventId());
-        assertEquals("Difference in reservation value: eventTitle", "Test", res.getEventTitle());
+        checkEvent(e, resp);
+        assertEquals("Difference in reservation value: eventId", 0, e.getReservations().get(0).getEventId());
     }
 
     @Test
     public void updateEvent() {
         when(db.updateEvent(any(Event.class))).then(returnsFirstArg());
 
-        Event e = new Event();
-        e.setId(1);
-        ZonedDateTime zd = ZonedDateTime.of(LocalDateTime.of(LocalDate.of(2015, 10, 21), LocalTime.of(16, 49, 20)), ZoneId.of("Etc/GMT-7"));
-        e.setStartTime(zd);
-        e.setEndTime(zd.plusHours(3));
-        e.setTitle("Destination");
-        e.setDescription("Just a test");
-        e.setPrivateEvent(false);
-        e.setSchedulerId(1);
-        e.setContactId(1);
-        e.setDepartments(new ArrayList<>());
-        e.getDepartments().add("Department of Time Travel");
-        e.getDepartments().add("Department of Safety");
-        e.setCategories(new ArrayList<>());
-        e.getCategories().add("Time");
-        e.getCategories().add("Marty McFly");
-        e.getCategories().add("Routine");
-        Reservation r = new Reservation();
-        r.setId(2);
-        r.setResourceType(Reservation.ResourceType.EQUIPMENT);
-        r.setResourceId(2);
-        r.setResourceName("DeLorean");
-        r.setReservingPersonId(1);
-        r.setReserverName("Dr. Emmett Brown");
-        //Different behavior than in create as update won't fix the eventId
-        r.setEventId(1);
-        r.setEventTitle("Test");
-        r.setStartTime(e.getStartTime());
-        r.setEndTime(e.getEndTime());
-        e.setReservations(new ArrayList<>());
-        e.getReservations().add(r);
-
+        Event e = getTestEvent();
         Event resp = ev.updateEvent(e);
+
         verify(db, times(1)).updateEvent(e);
-        verify(resMan, times(1)).updateRservationsForEvent(e.getReservations(), 1);
+        verify(resMan, times(1)).updateRservationsForEvent(e.getReservations(), 0);
+
+        checkEvent(e, resp);
+        assertEquals("Difference in reservation value: eventId", 1, e.getReservations().get(0).getEventId());
+    }
+
+    @Test
+    public void deleteEvent() {
+        when(db.deleteEvent(anyInt())).thenReturn(true);
+
+        Event e = getTestEvent();
+        boolean resp = ev.deleteEvent(e);
+
+        verify(db, times(1)).deleteEvent(e.getId());
+        verify(resMan, times(1)).deleteReservationsForEvent(e.getId());
+
+        assertTrue("Wrong response", resp);
+    }
+
+    private void checkEvent(Event e, Event resp) {
+        ZonedDateTime zd = ZonedDateTime.of(LocalDateTime.of(LocalDate.of(2015, 10, 21), LocalTime.of(16, 49, 20)), ZoneId.of("Etc/GMT-7"));
+        Reservation r = e.getReservations().get(0);
+
         assertEquals("Different passed and returned Event Object", e, resp);
-        assertEquals("Difference between returned and expected Event values: Id", 1, resp.getId());
+        assertEquals("Difference between returned and expected Event values: Id", 0, resp.getId());
         assertTrue("Difference between returned and expected Event values: startTime", zd.isEqual(resp.getStartTime()));
         assertTrue("Difference between returned and expected Event values: endTime", zd.plusHours(3).isEqual(resp.getEndTime()));
         assertEquals("Difference between returned and expected Event values: title", "Destination", resp.getTitle());
@@ -205,16 +140,11 @@ public class EventManagerTest {
         assertEquals("Difference in reservation value: resourceName", "DeLorean", res.getResourceName());
         assertEquals("Difference in reservation value: reservingPersonId", 1, r.getReservingPersonId());
         assertEquals("Difference in reservation value: reserverName", "Dr. Emmett Brown", res.getReserverName());
-        assertEquals("Difference in reservation value: eventId", 1, r.getEventId());
         assertEquals("Difference in reservation value: eventTitle", "Test", res.getEventTitle());
     }
 
-    @Test
-    public void deleteEvent() {
-        when(db.deleteEvent(anyInt())).thenReturn(true);
-
+    private Event getTestEvent() {
         Event e = new Event();
-        e.setId(1);
         ZonedDateTime zd = ZonedDateTime.of(LocalDateTime.of(LocalDate.of(2015, 10, 21), LocalTime.of(16, 49, 20)), ZoneId.of("Etc/GMT-7"));
         e.setStartTime(zd);
         e.setEndTime(zd.plusHours(3));
@@ -244,9 +174,6 @@ public class EventManagerTest {
         e.setReservations(new ArrayList<>());
         e.getReservations().add(r);
 
-        boolean resp = ev.deleteEvent(e);
-        verify(db, times(1)).deleteEvent(e.getId());
-        verify(resMan, times(1)).deleteReservationsForEvent(e.getId());
-        assertTrue("Wrong response", resp);
+        return e;
     }
 }
