@@ -6,6 +6,7 @@ import org.servantscode.commons.db.DBAccess;
 import org.servantscode.commons.search.QueryBuilder;
 import org.servantscode.commons.search.Search;
 import org.servantscode.commons.search.SearchParser;
+import org.servantscode.commons.security.OrganizationContext;
 import org.servantscode.schedule.Event;
 
 import java.sql.*;
@@ -29,7 +30,7 @@ public class EventDB extends DBAccess {
     private QueryBuilder dataQuery() {
         return select("e.*", "m.name as ministry_name")
                 .from("events e")
-                .join("LEFT JOIN ministries m ON ministry_id=m.id");
+                .join("LEFT JOIN ministries m ON ministry_id=m.id").inOrg("e.org_id");
     }
 
     public Event getEvent(int id) {
@@ -46,7 +47,7 @@ public class EventDB extends DBAccess {
     public List<ZonedDateTime> getFutureEvents(Event event) {
         QueryBuilder query = select("start_time").from("events")
                 .where("recurring_meeting_id=?", event.getRecurringMeetingId())
-                .where("start_time >= ?", event.getStartTime());
+                .where("start_time >= ?", event.getStartTime()).inOrg();
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
              ResultSet rs = stmt.executeQuery()) {
@@ -64,7 +65,7 @@ public class EventDB extends DBAccess {
     public int getCount(String search) {
         QueryBuilder query = count()
                 .from("events e")
-                .search(parseSearch(search));
+                .search(parseSearch(search)).inOrg();
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
              ResultSet rs = stmt.executeQuery()
@@ -82,6 +83,7 @@ public class EventDB extends DBAccess {
     public List<Event> getEvents(String search, String sortField, int start, int count) {
         QueryBuilder query = dataQuery().search(parseSearch(search))
                 .sort(sortField).limit(count).offset(start);
+
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn)
         ) {
@@ -122,7 +124,7 @@ public class EventDB extends DBAccess {
 
     public Event create(Event event) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("INSERT INTO events(recurring_meeting_id, start_time, end_time, title, description, private_event, scheduler_id, contact_id, ministry_id, departments, categories) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
+             PreparedStatement stmt = conn.prepareStatement("INSERT INTO events(recurring_meeting_id, start_time, end_time, title, description, private_event, scheduler_id, contact_id, ministry_id, departments, categories, org_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
         ){
 
             stmt.setInt(1, event.getRecurringMeetingId());
@@ -144,6 +146,7 @@ public class EventDB extends DBAccess {
             }
             stmt.setString(10, storeList(event.getDepartments()));
             stmt.setString(11, storeList(event.getCategories()));
+            stmt.setInt(12, OrganizationContext.orgId());
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not create event: " + event.getDescription());
@@ -161,7 +164,7 @@ public class EventDB extends DBAccess {
 
     public Event updateEvent(Event event) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("UPDATE events SET recurring_meeting_id=?, start_time=?, end_time=?, title=?, description=?, private_event=?, scheduler_id=?, contact_id=?, ministry_id=?, departments=?, categories=? WHERE id=?")
+             PreparedStatement stmt = conn.prepareStatement("UPDATE events SET recurring_meeting_id=?, start_time=?, end_time=?, title=?, description=?, private_event=?, scheduler_id=?, contact_id=?, ministry_id=?, departments=?, categories=? WHERE id=? AND org_id=?")
         ) {
 
             stmt.setInt(1, event.getRecurringMeetingId());
@@ -184,6 +187,7 @@ public class EventDB extends DBAccess {
             stmt.setString(10, storeList(event.getDepartments()));
             stmt.setString(11, storeList(event.getCategories()));
             stmt.setInt(12, event.getId());
+            stmt.setInt(13, OrganizationContext.orgId());
 
             if (stmt.executeUpdate() == 0)
                 throw new RuntimeException("Could not update event: " + event.getDescription());
@@ -196,10 +200,11 @@ public class EventDB extends DBAccess {
 
     public boolean deleteEvent(int id) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("DELETE FROM events WHERE id=?")
+             PreparedStatement stmt = conn.prepareStatement("DELETE FROM events WHERE id=? AND org_id=?")
         ) {
 
             stmt.setInt(1, id);
+            stmt.setInt(2, OrganizationContext.orgId());
             return stmt.executeUpdate() != 0;
         } catch (SQLException e) {
             throw new RuntimeException("Could not delete event: " + id, e);

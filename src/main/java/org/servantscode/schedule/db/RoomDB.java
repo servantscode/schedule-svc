@@ -6,6 +6,7 @@ import org.servantscode.commons.AutoCompleteComparator;
 import org.servantscode.commons.db.DBAccess;
 import org.servantscode.commons.search.QueryBuilder;
 import org.servantscode.commons.search.SearchParser;
+import org.servantscode.commons.security.OrganizationContext;
 import org.servantscode.schedule.Room;
 
 import java.sql.*;
@@ -26,7 +27,7 @@ public class RoomDB extends DBAccess {
     }
 
     public int getCount(String search) {
-        QueryBuilder query = count().from("rooms").search(searchParser.parse(search));
+        QueryBuilder query = count().from("rooms").search(searchParser.parse(search)).inOrg();
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
              ResultSet rs = stmt.executeQuery()) {
@@ -40,7 +41,7 @@ public class RoomDB extends DBAccess {
     }
 
     public Room getRoom(int id) {
-        QueryBuilder query = selectAll().from("rooms").withId(id);
+        QueryBuilder query = selectAll().from("rooms").withId(id).inOrg();
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
         ) {
@@ -52,7 +53,7 @@ public class RoomDB extends DBAccess {
     }
 
     public List<Room> getRooms(String search, String sortField, int start, int count) {
-        QueryBuilder query = selectAll().from("rooms").search(searchParser.parse(search))
+        QueryBuilder query = selectAll().from("rooms").search(searchParser.parse(search)).inOrg()
                 .sort(sortField).limit(count).offset(start);
         try ( Connection conn = getConnection();
               PreparedStatement stmt = query.prepareStatement(conn)
@@ -65,12 +66,13 @@ public class RoomDB extends DBAccess {
 
     public Room create(Room room) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("INSERT INTO rooms(name, type, capacity) values (?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
+             PreparedStatement stmt = conn.prepareStatement("INSERT INTO rooms(name, type, capacity, org_id) values (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
         ){
 
             stmt.setString(1, room.getName());
             stmt.setString(2, room.getType().toString());
             stmt.setInt(3, room.getCapacity());
+            stmt.setInt(4, OrganizationContext.orgId());
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not create room: " + room.getName());
@@ -88,13 +90,14 @@ public class RoomDB extends DBAccess {
 
     public Room updateRoom(Room room) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("UPDATE rooms SET name=?, type=?, capacity=? WHERE id=?")
+             PreparedStatement stmt = conn.prepareStatement("UPDATE rooms SET name=?, type=?, capacity=? WHERE id=? AND org_id=?")
         ) {
 
             stmt.setString(1, room.getName());
             stmt.setString(2, room.getType().toString());
             stmt.setInt(3, room.getCapacity());
             stmt.setInt(4, room.getId());
+            stmt.setInt(5, OrganizationContext.orgId());
 
             if (stmt.executeUpdate() == 0)
                 throw new RuntimeException("Could not update room: " + room.getName());
@@ -107,10 +110,11 @@ public class RoomDB extends DBAccess {
 
     public boolean deleteRoom(int id) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("DELETE FROM rooms WHERE id=?")
+             PreparedStatement stmt = conn.prepareStatement("DELETE FROM rooms WHERE id=? AND org_id=?")
         ) {
 
             stmt.setInt(1, id);
+            stmt.setInt(2, OrganizationContext.orgId());
             return stmt.executeUpdate() != 0;
         } catch (SQLException e) {
             throw new RuntimeException("Could not delete room: " + id, e);
