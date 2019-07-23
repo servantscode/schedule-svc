@@ -48,7 +48,8 @@ public class ReservationDB extends DBAccess {
 
     public List<Reservation> getEventReservations(String search) {
         QueryBuilder query = queryData()
-                .whereIdIn("r.event_id", select("id").from("events").search(EventDB.parseSearch(search)));
+                .whereIdIn("r.event_id", select("e.id").from("events e")
+                        .join("LEFT JOIN ministries m ON ministry_id=m.id").inOrg("e.org_id").search(EventDB.parseSearch(search)));
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn)
         ) {

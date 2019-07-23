@@ -25,6 +25,10 @@ public class EventDB extends DBAccess {
         FIELD_MAP.put("endTime", "end_time");
         FIELD_MAP.put("description", "e.description");
         FIELD_MAP.put("recurringMeetingId", "recurring_meeting_id");
+        FIELD_MAP.put("ministryName", "m.name");
+        FIELD_MAP.put("department", "departments");
+        FIELD_MAP.put("category", "categories");
+        FIELD_MAP.put("privateEvent", "private_event");
     }
 
     private QueryBuilder dataQuery() {
@@ -65,7 +69,8 @@ public class EventDB extends DBAccess {
     public int getCount(String search) {
         QueryBuilder query = count()
                 .from("events e")
-                .search(parseSearch(search)).inOrg();
+                .join("LEFT JOIN ministries m ON ministry_id=m.id").inOrg("e.org_id")
+                .search(parseSearch(search)).inOrg("e.org_id");
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
              ResultSet rs = stmt.executeQuery()

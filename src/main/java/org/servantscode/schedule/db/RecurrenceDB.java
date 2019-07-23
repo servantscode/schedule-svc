@@ -40,7 +40,8 @@ public class RecurrenceDB extends DBAccess {
 
     public List<Recurrence> getEventRecurrences(String search) {
         QueryBuilder query = selectAll().from("recurrences")
-                .whereIdIn("id", select("DISTINCT e.recurring_meeting_id").from("events e").search(EventDB.parseSearch(search)));
+                .whereIdIn("id", select("DISTINCT e.recurring_meeting_id").from("events e")
+                        .join("LEFT JOIN ministries m ON ministry_id=m.id").inOrg("e.org_id").search(EventDB.parseSearch(search)));
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn)
         ) {
