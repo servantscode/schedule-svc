@@ -9,7 +9,6 @@ import org.servantscode.schedule.Reservation;
 import java.sql.*;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 @SuppressWarnings("SqlNoDataSourceInspection")
