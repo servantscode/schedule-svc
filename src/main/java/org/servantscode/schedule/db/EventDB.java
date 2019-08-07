@@ -14,6 +14,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 
 import static java.sql.Types.INTEGER;
+import static java.util.Collections.emptyList;
 
 @SuppressWarnings("SqlNoDataSourceInspection")
 public class EventDB extends DBAccess {
@@ -26,14 +27,22 @@ public class EventDB extends DBAccess {
         FIELD_MAP.put("description", "e.description");
         FIELD_MAP.put("recurringMeetingId", "recurring_meeting_id");
         FIELD_MAP.put("ministryName", "m.name");
-        FIELD_MAP.put("department", "departments");
-        FIELD_MAP.put("category", "categories");
+        FIELD_MAP.put("departments", "department_names");
+        FIELD_MAP.put("categories", "category_names");
         FIELD_MAP.put("privateEvent", "private_event");
     }
 
+    private SearchParser<Event> searchParser;
+
+    public EventDB() {
+        searchParser = new SearchParser<>(Event.class,"title",FIELD_MAP);
+    }
+
     private QueryBuilder dataQuery() {
-        return select("e.*", "m.name as ministry_name")
+        return select("e.*", "m.name as ministry_name, department_names, department_ids, category_names, category_ids")
                 .from("events e")
+                .join("LEFT JOIN (SELECT array_agg(d.id) AS department_ids, array_agg(d.name) AS department_names, event_id FROM departments d, event_departments ed WHERE d.id=ed.department_id GROUP BY event_id) depts ON depts.event_id=e.id")
+                .join("LEFT JOIN (SELECT array_agg(c.id) AS category_ids, array_agg(c.name) AS category_names, event_id FROM categories c, event_categories cd WHERE c.id=cd.category_id GROUP BY event_id) cats ON cats.event_id=e.id")
                 .join("LEFT JOIN ministries m ON ministry_id=m.id").inOrg("e.org_id");
     }
 
@@ -69,8 +78,10 @@ public class EventDB extends DBAccess {
     public int getCount(String search) {
         QueryBuilder query = count()
                 .from("events e")
-                .join("LEFT JOIN ministries m ON ministry_id=m.id").inOrg("e.org_id")
-                .search(parseSearch(search)).inOrg("e.org_id");
+                .join("LEFT JOIN (SELECT array_agg(d.id) AS department_ids, array_agg(d.name) AS department_names, event_id FROM departments d, event_departments ed WHERE d.id=ed.department_id GROUP BY event_id) depts ON depts.event_id=e.id")
+                .join("LEFT JOIN (SELECT array_agg(c.id) AS category_ids, array_agg(c.name) AS category_names, event_id FROM categories c, event_categories cd WHERE c.id=cd.category_id GROUP BY event_id) cats ON cats.event_id=e.id")
+                .join("LEFT JOIN ministries m ON ministry_id=m.id")
+                .search(searchParser.parse(search)).inOrg("e.org_id");
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
              ResultSet rs = stmt.executeQuery()
@@ -86,7 +97,7 @@ public class EventDB extends DBAccess {
     }
 
     public List<Event> getEvents(String search, String sortField, int start, int count) {
-        QueryBuilder query = dataQuery().search(parseSearch(search))
+        QueryBuilder query = dataQuery().search(searchParser.parse(search))
                 .sort(sortField).limit(count).offset(start);
 
         try (Connection conn = getConnection();
@@ -128,8 +139,12 @@ public class EventDB extends DBAccess {
     }
 
     public Event create(Event event) {
+        String sql = "INSERT INTO events(recurring_meeting_id, start_time, end_time, " +
+                "title, description, private_event, " +
+                "scheduler_id, contact_id, ministry_id, org_id) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("INSERT INTO events(recurring_meeting_id, start_time, end_time, title, description, private_event, scheduler_id, contact_id, ministry_id, departments, categories, org_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
+             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
         ){
 
             stmt.setInt(1, event.getRecurringMeetingId());
@@ -149,9 +164,7 @@ public class EventDB extends DBAccess {
             } else {
                 stmt.setNull(9, INTEGER);
             }
-            stmt.setString(10, storeList(event.getDepartments()));
-            stmt.setString(11, storeList(event.getCategories()));
-            stmt.setInt(12, OrganizationContext.orgId());
+            stmt.setInt(10, OrganizationContext.orgId());
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not create event: " + event.getDescription());
@@ -161,15 +174,18 @@ public class EventDB extends DBAccess {
                 if (rs.next())
                     event.setId(rs.getInt(1));
             }
+
+            crossReferenceDepartments(conn, event.getId(), event.getDepartmentIds());
+            crossReferenceCategories(conn, event.getId(), event.getCategoryIds());
+
             return event;
         } catch (SQLException e) {
             throw new RuntimeException("Could not add event: " + event.getDescription(), e);
         }
     }
-
     public Event updateEvent(Event event) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("UPDATE events SET recurring_meeting_id=?, start_time=?, end_time=?, title=?, description=?, private_event=?, scheduler_id=?, contact_id=?, ministry_id=?, departments=?, categories=? WHERE id=? AND org_id=?")
+             PreparedStatement stmt = conn.prepareStatement("UPDATE events SET recurring_meeting_id=?, start_time=?, end_time=?, title=?, description=?, private_event=?, scheduler_id=?, contact_id=?, ministry_id=? WHERE id=? AND org_id=?")
         ) {
 
             stmt.setInt(1, event.getRecurringMeetingId());
@@ -189,13 +205,14 @@ public class EventDB extends DBAccess {
             } else {
                 stmt.setNull(9, INTEGER);
             }
-            stmt.setString(10, storeList(event.getDepartments()));
-            stmt.setString(11, storeList(event.getCategories()));
-            stmt.setInt(12, event.getId());
-            stmt.setInt(13, OrganizationContext.orgId());
+            stmt.setInt(10, event.getId());
+            stmt.setInt(11, OrganizationContext.orgId());
 
             if (stmt.executeUpdate() == 0)
                 throw new RuntimeException("Could not update event: " + event.getDescription());
+
+            crossReferenceDepartments(conn, event.getId(), event.getDepartmentIds());
+            crossReferenceCategories(conn, event.getId(), event.getCategoryIds());
 
             return event;
         } catch (SQLException e) {
@@ -233,15 +250,76 @@ public class EventDB extends DBAccess {
                 e.setContactId(rs.getInt("contact_id"));
                 e.setMinistryId(rs.getInt("ministry_id"));
                 e.setMinistryName(rs.getString("ministry_name"));
-                e.setDepartments(parseList(rs.getString("departments")));
-                e.setCategories(parseList(rs.getString("categories")));
+                e.setDepartments(parseStringList(rs.getArray("department_names")));
+                e.setDepartmentIds(parseIntList(rs.getArray("department_ids")));
+                e.setCategories(parseStringList(rs.getArray("category_names")));
+                e.setCategoryIds(parseIntList(rs.getArray("category_ids")));
                 events.add(e);
             }
             return events;
         }
     }
 
-    protected static Search parseSearch(String search) {
+    private List<Integer> parseIntList(Array items) throws SQLException {
+        if(items == null)
+            return emptyList();
+        if(items.getBaseType() != Types.INTEGER)
+            throw new RuntimeException("Unexpected array type encountered");
+        return Arrays.asList((Integer[])items.getArray());
+    }
+
+    private List<String> parseStringList(Array items) throws SQLException {
+        if(items == null)
+            return emptyList();
+        if(items.getBaseType() != Types.VARCHAR)
+            throw new RuntimeException("Unexpected array type encountered");
+        return Arrays.asList((String[])items.getArray());
+    }
+
+    /*package*/ static Search parseSearch(String search) {
         return new SearchParser<>(Event.class, "title", FIELD_MAP).parse(search);
     }
+
+    private void crossReferenceDepartments(Connection conn, int id, List<Integer> departmentIds) throws SQLException {
+        try(PreparedStatement stmt = conn.prepareStatement("DELETE FROM event_departments WHERE event_id=?")) {
+            stmt.setInt(1, id);
+            stmt.executeUpdate();
+        }
+
+        if(departmentIds == null || departmentIds.isEmpty())
+            return;
+
+        try(PreparedStatement stmt = conn.prepareStatement("INSERT INTO event_departments(event_id, department_id) VALUES (?, ?)")) {
+            stmt.setInt(1, id);
+
+            for (Integer departmentId : departmentIds) {
+                stmt.setInt(2, departmentId);
+                stmt.addBatch();
+            }
+
+            stmt.executeBatch();
+        }
+    }
+
+    private void crossReferenceCategories(Connection conn, int id, List<Integer> categoryIds) throws SQLException {
+        try(PreparedStatement stmt = conn.prepareStatement("DELETE FROM event_categories WHERE event_id=?")) {
+            stmt.setInt(1, id);
+            stmt.executeUpdate();
+        }
+
+        if(categoryIds == null || categoryIds.isEmpty())
+            return;
+
+        try(PreparedStatement stmt = conn.prepareStatement("INSERT INTO event_categories(event_id, category_id) VALUES (?, ?)")) {
+            stmt.setInt(1, id);
+
+            for (Integer categoryId : categoryIds) {
+                stmt.setInt(2, categoryId);
+                stmt.addBatch();
+            }
+
+            stmt.executeBatch();
+        }
+    }
+
 }

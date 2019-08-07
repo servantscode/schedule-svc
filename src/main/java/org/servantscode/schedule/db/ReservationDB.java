@@ -48,6 +48,8 @@ public class ReservationDB extends DBAccess {
     public List<Reservation> getEventReservations(String search) {
         QueryBuilder query = queryData()
                 .whereIdIn("r.event_id", select("e.id").from("events e")
+                        .join("LEFT JOIN (SELECT array_agg(d.id) AS department_ids, array_agg(d.name) AS department_names, event_id FROM departments d, event_departments ed WHERE d.id=ed.department_id GROUP BY event_id) depts ON depts.event_id=e.id")
+                        .join("LEFT JOIN (SELECT array_agg(c.id) AS category_ids, array_agg(c.name) AS category_names, event_id FROM categories c, event_categories cd WHERE c.id=cd.category_id GROUP BY event_id) cats ON cats.event_id=e.id")
                         .join("LEFT JOIN ministries m ON ministry_id=m.id").inOrg("e.org_id").search(EventDB.parseSearch(search)));
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn)

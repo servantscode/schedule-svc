@@ -19,7 +19,9 @@ public class Event {
     private String ministryName;
     private int ministryId;
     private List<String> departments;
+    private List<Integer> departmentIds;
     private List<String> categories;
+    private List<Integer> categoryIds;
 
     @JsonIgnore
     private int recurringMeetingId;
@@ -43,8 +45,12 @@ public class Event {
         this.reservations = new LinkedList<>();
         if(e.departments != null)
             this.departments = new ArrayList<>(e.departments);
+        if(e.departmentIds != null)
+            this.departmentIds = new ArrayList<>(e.departmentIds);
         if(e.categories != null)
             this.categories = new ArrayList<>(e.categories);
+        if(e.categoryIds != null)
+            this.categoryIds = new ArrayList<>(e.categoryIds);
         if(e.reservations != null)
             for(Reservation r: e.reservations)
                 this.reservations.add(new Reservation(r));
@@ -90,8 +96,14 @@ public class Event {
     public List<String> getDepartments() { return departments; }
     public void setDepartments(List<String> departments) { this.departments = departments; }
 
+    public List<Integer> getDepartmentIds() { return departmentIds; }
+    public void setDepartmentIds(List<Integer> departmentIds) { this.departmentIds = departmentIds; }
+
     public List<String> getCategories() { return categories; }
     public void setCategories(List<String> categories) { this.categories = categories; }
+
+    public List<Integer> getCategoryIds() { return categoryIds; }
+    public void setCategoryIds(List<Integer> categoryIds) { this.categoryIds = categoryIds; }
 
     public List<Reservation> getReservations() { return reservations; }
     public void setReservations(List<Reservation> reservations) { this.reservations = reservations; }

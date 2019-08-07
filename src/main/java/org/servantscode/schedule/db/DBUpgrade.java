@@ -25,8 +25,6 @@ public class DBUpgrade extends AbstractDBUpgrade {
                                         "scheduler_id INTEGER REFERENCES people(id) ON DELETE SET NULL, " +
                                         "contact_id INTEGER REFERENCES people(id) ON DELETE SET NULL, " +
                                         "ministry_id INTEGER REFERENCES ministries(id) ON DELETE CASCADE, " +
-                                        "departments TEXT, " +
-                                        "categories TEXT, " +
                                         "org_id INTEGER references organizations(id) ON DELETE CASCADE)");
         }
 
@@ -67,6 +65,28 @@ public class DBUpgrade extends AbstractDBUpgrade {
                                             "end_date DATE, " +
                                             "weekly_days INTEGER, " +
                                             "excluded_days TEXT)");
+        }
+
+        if(!tableExists("event_departments")) {
+            LOG.info("-- Creating event_departments table");
+            runSql("CREATE TABLE event_departments (event_id INTEGER REFERENCES events(id) ON DELETE CASCADE," +
+                                                   "department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE)");
+        }
+
+        if(!tableExists("event_categories")) {
+            LOG.info("-- Creating event_categories table");
+            runSql("CREATE TABLE event_categories (event_id INTEGER REFERENCES events(id) ON DELETE CASCADE," +
+                                                  "category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE)");
+        }
+
+        if(columnExists("events", "departments")) {
+            LOG.info("-- Removing column departments");
+            runSql("ALTER TABLE events DROP COLUMN departments");
+        }
+
+        if(columnExists("events", "categories")) {
+            LOG.info("-- Removing column categories");
+            runSql("ALTER TABLE events DROP COLUMN categories");
         }
     }
 }
