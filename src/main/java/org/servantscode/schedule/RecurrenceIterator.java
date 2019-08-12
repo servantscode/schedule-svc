@@ -1,5 +1,7 @@
 package org.servantscode.schedule;
 
+import org.servantscode.commons.DateUtils;
+
 import java.time.DayOfWeek;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -20,7 +22,7 @@ public class RecurrenceIterator implements Iterator<ZonedDateTime> {
     private List<DayOfWeek> days;
     private Iterator<DayOfWeek> dayIter;
 
-    private static final ZoneId DEFAULT_TIMEZONE = ZoneId.of("America/Chicago");
+
 
     public RecurrenceIterator(Recurrence r, ZonedDateTime startDate) {
         if(r.getCycle() == CUSTOM)
@@ -30,7 +32,7 @@ public class RecurrenceIterator implements Iterator<ZonedDateTime> {
         next = normalizeTimeZone(startDate);
 
         //Inclusive of last day
-        end = r.getEndDate().plusDays(1).atStartOfDay(DEFAULT_TIMEZONE);
+        end = r.getEndDate().plusDays(1).atStartOfDay(DateUtils.getTimeZone());
 
         // It's possible someone requested a start date that is not of of the recurring week days.
         // If so, skip to the next one.
@@ -105,7 +107,6 @@ public class RecurrenceIterator implements Iterator<ZonedDateTime> {
     }
 
     public static ZonedDateTime normalizeTimeZone(ZonedDateTime input) {
-        //TODO: This only works for Central timezone. Someone will have to fix this before we go too far from home.
-        return input.withZoneSameInstant(DEFAULT_TIMEZONE);
+        return input.withZoneSameInstant(DateUtils.getTimeZone());
     }
 }

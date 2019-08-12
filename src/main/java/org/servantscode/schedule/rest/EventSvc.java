@@ -11,8 +11,11 @@ import org.servantscode.schedule.db.ReservationDB;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
@@ -21,6 +24,18 @@ import static org.servantscode.schedule.Recurrence.RecurrenceCycle.CUSTOM;
 @Path("/event")
 public class EventSvc extends SCServiceBase {
     private static final Logger LOG = LogManager.getLogger(EventSvc.class);
+
+    private static final List<String> EXPORTABLE_FIELDS = Arrays.asList("id",
+                                                                        "title",
+                                                                        "description",
+                                                                        "start_time",
+                                                                        "end_time",
+                                                                        "private_event",
+                                                                        "scheduler_id",
+                                                                        "contact_id",
+                                                                        "ministry_name",
+                                                                        "department_names",
+                                                                        "category_names");
 
     private EventDB db;
     RecurrenceDB recurDb;
@@ -131,6 +146,20 @@ public class EventSvc extends SCServiceBase {
             LOG.error("Retrieving events failed:", t);
         }
         return null;
+    }
+
+    @GET @Path("/report") @Produces(MediaType.TEXT_PLAIN)
+    public Response getPeopleReport(@QueryParam("search") @DefaultValue("") String search,
+                                    @QueryParam("include_inactive") @DefaultValue("false") boolean includeInactive) {
+
+        verifyUserAccess("person.export");
+
+        try {
+            return Response.ok(db.getReportReader(search, EXPORTABLE_FIELDS)).build();
+        } catch (Throwable t) {
+            LOG.error("Retrieving people report failed:", t);
+            throw t;
+        }
     }
 
     @POST

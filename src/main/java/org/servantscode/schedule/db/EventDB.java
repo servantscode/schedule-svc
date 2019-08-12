@@ -3,12 +3,17 @@ package org.servantscode.schedule.db;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.db.DBAccess;
+import org.servantscode.commons.db.ReportStreamingOutput;
 import org.servantscode.commons.search.QueryBuilder;
 import org.servantscode.commons.search.Search;
 import org.servantscode.commons.search.SearchParser;
 import org.servantscode.commons.security.OrganizationContext;
 import org.servantscode.schedule.Event;
 
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.StreamingOutput;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.sql.*;
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -136,6 +141,24 @@ public class EventDB extends DBAccess {
         } catch (SQLException e) {
             throw new RuntimeException("Could not retrieve events.", e);
         }
+    }
+
+    public StreamingOutput getReportReader(String search, final List<String> fields) {
+        final QueryBuilder query = dataQuery().search(searchParser.parse(search));
+
+        return new ReportStreamingOutput(fields) {
+            @Override
+            public void write(OutputStream output) throws IOException, WebApplicationException {
+                try ( Connection conn = getConnection();
+                      PreparedStatement stmt = query.prepareStatement(conn);
+                      ResultSet rs = stmt.executeQuery()) {
+
+                    writeCsv(output, rs);
+                } catch (SQLException | IOException e) {
+                    throw new RuntimeException("Could not retrieve events containing '" + search + "'", e);
+                }
+            }
+        };
     }
 
     public Event create(Event event) {
