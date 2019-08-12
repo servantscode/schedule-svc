@@ -18,6 +18,7 @@ public class Event {
     private int contactId;
     private String ministryName;
     private int ministryId;
+    private int attendees;
     private List<String> departments;
     private List<Integer> departmentIds;
     private List<String> categories;
@@ -40,6 +41,7 @@ public class Event {
         this.contactId = e.contactId;
         this.ministryName = e.ministryName;
         this.ministryId = e.ministryId;
+        this.attendees = e.attendees;
         this.recurringMeetingId = e.recurringMeetingId;
         this.recurrence = new Recurrence(e.recurrence);
         this.reservations = new LinkedList<>();
@@ -86,6 +88,9 @@ public class Event {
 
     public int getMinistryId() { return ministryId; }
     public void setMinistryId(int ministryId) { this.ministryId = ministryId; }
+
+    public int getAttendees() { return attendees; }
+    public void setAttendees(int attendees) { this.attendees = attendees; }
 
     public int getRecurringMeetingId() { return recurringMeetingId; }
     public void setRecurringMeetingId(int recurringMeetingId) { this.recurringMeetingId = recurringMeetingId; }

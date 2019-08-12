@@ -25,6 +25,7 @@ public class DBUpgrade extends AbstractDBUpgrade {
                                         "scheduler_id INTEGER REFERENCES people(id) ON DELETE SET NULL, " +
                                         "contact_id INTEGER REFERENCES people(id) ON DELETE SET NULL, " +
                                         "ministry_id INTEGER REFERENCES ministries(id) ON DELETE CASCADE, " +
+                                        "attendees INTEGER, " +
                                         "org_id INTEGER references organizations(id) ON DELETE CASCADE)");
         }
 
@@ -87,6 +88,11 @@ public class DBUpgrade extends AbstractDBUpgrade {
         if(columnExists("events", "categories")) {
             LOG.info("-- Removing column categories");
             runSql("ALTER TABLE events DROP COLUMN categories");
+        }
+
+        if(!columnExists("events", "attendees")) {
+            LOG.info("-- Removing column categories");
+            runSql("ALTER TABLE events ADD COLUMN attendees INTEGER");
         }
     }
 }

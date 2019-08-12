@@ -165,8 +165,8 @@ public class EventDB extends DBAccess {
     public Event create(Event event) {
         String sql = "INSERT INTO events(recurring_meeting_id, start_time, end_time, " +
                 "title, description, private_event, " +
-                "scheduler_id, contact_id, ministry_id, org_id) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "scheduler_id, contact_id, ministry_id, attendees, org_id) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
         ){
@@ -188,7 +188,8 @@ public class EventDB extends DBAccess {
             } else {
                 stmt.setNull(9, INTEGER);
             }
-            stmt.setInt(10, OrganizationContext.orgId());
+            stmt.setInt(10, event.getAttendees());
+            stmt.setInt(11, OrganizationContext.orgId());
 
             if(stmt.executeUpdate() == 0) {
                 throw new RuntimeException("Could not create event: " + event.getDescription());
@@ -209,7 +210,7 @@ public class EventDB extends DBAccess {
     }
     public Event updateEvent(Event event) {
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("UPDATE events SET recurring_meeting_id=?, start_time=?, end_time=?, title=?, description=?, private_event=?, scheduler_id=?, contact_id=?, ministry_id=? WHERE id=? AND org_id=?")
+             PreparedStatement stmt = conn.prepareStatement("UPDATE events SET recurring_meeting_id=?, start_time=?, end_time=?, title=?, description=?, private_event=?, scheduler_id=?, contact_id=?, ministry_id=?, attendees=? WHERE id=? AND org_id=?")
         ) {
 
             stmt.setInt(1, event.getRecurringMeetingId());
@@ -229,8 +230,9 @@ public class EventDB extends DBAccess {
             } else {
                 stmt.setNull(9, INTEGER);
             }
-            stmt.setInt(10, event.getId());
-            stmt.setInt(11, OrganizationContext.orgId());
+            stmt.setInt(10, event.getAttendees());
+            stmt.setInt(11, event.getId());
+            stmt.setInt(12, OrganizationContext.orgId());
 
             if (stmt.executeUpdate() == 0)
                 throw new RuntimeException("Could not update event: " + event.getDescription());
@@ -274,6 +276,7 @@ public class EventDB extends DBAccess {
                 e.setContactId(rs.getInt("contact_id"));
                 e.setMinistryId(rs.getInt("ministry_id"));
                 e.setMinistryName(rs.getString("ministry_name"));
+                e.setAttendees(rs.getInt("attendees"));
                 e.setDepartments(parseStringList(rs.getArray("department_names")));
                 e.setDepartmentIds(parseIntList(rs.getArray("department_ids")));
                 e.setCategories(parseStringList(rs.getArray("category_names")));
