@@ -28,7 +28,7 @@ public class RoomSvc extends SCServiceBase {
     public PaginatedResponse<Room> getRooms(@QueryParam("start") @DefaultValue("0") int start,
                                             @QueryParam("count") @DefaultValue("10") int count,
                                             @QueryParam("sort_field") @DefaultValue("id") String sortField,
-                                            @QueryParam("partial_name") @DefaultValue("") String nameSearch) {
+                                            @QueryParam("search") @DefaultValue("") String nameSearch) {
 
         verifyUserAccess("room.list");
         try {
