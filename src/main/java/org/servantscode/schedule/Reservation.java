@@ -1,5 +1,7 @@
 package org.servantscode.schedule;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.time.ZonedDateTime;
 
 public class Reservation {
@@ -13,6 +15,12 @@ public class Reservation {
     private String reserverName;
     private int eventId;
     private String eventTitle;
+
+    @JsonIgnore
+    private boolean privateEvent;
+
+    @JsonIgnore
+    private int schedulerId;
 
     private ZonedDateTime startTime;
     private ZonedDateTime endTime;
@@ -29,6 +37,8 @@ public class Reservation {
         this.eventTitle = r.eventTitle;
         this.startTime = r.startTime;
         this.endTime = r.endTime;
+        this.privateEvent = r.privateEvent;
+        this.schedulerId = r.schedulerId;
     }
 
     public boolean isSameResource(Reservation other) {
@@ -60,6 +70,12 @@ public class Reservation {
 
     public String getEventTitle() { return eventTitle; }
     public void setEventTitle(String eventTitle) { this.eventTitle = eventTitle; }
+
+    public boolean isPrivateEvent() { return privateEvent; }
+    public void setPrivateEvent(boolean privateEvent) { this.privateEvent = privateEvent; }
+
+    public int getSchedulerId() { return schedulerId; }
+    public void setSchedulerId(int schedulerId) { this.schedulerId = schedulerId; }
 
     public ZonedDateTime getStartTime() { return startTime; }
     public void setStartTime(ZonedDateTime startTime) { this.startTime = startTime; }

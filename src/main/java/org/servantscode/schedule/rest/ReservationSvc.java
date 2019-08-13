@@ -7,6 +7,8 @@ import org.servantscode.schedule.*;
 import org.servantscode.schedule.db.ReservationDB;
 
 import javax.ws.rs.*;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.SecurityContext;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -23,10 +25,11 @@ public class ReservationSvc extends SCServiceBase {
     private static final Logger LOG = LogManager.getLogger(ReservationSvc.class);
 
     ReservationDB db;
+    private final EventPrivatizer privatizer = new EventPrivatizer();
 
-    public ReservationSvc() {
-        db = new ReservationDB();
-    }
+    @Context SecurityContext securityContext;
+
+    public ReservationSvc() { db = new ReservationDB(); }
 
     @GET
     @Produces(APPLICATION_JSON)
@@ -38,6 +41,7 @@ public class ReservationSvc extends SCServiceBase {
                                              @QueryParam("resourceId") int resourceId) {
 
         verifyUserAccess("reservation.list");
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
         if (resourceId != 0 && resourceType == null)
             throw new BadRequestException();
 
@@ -51,7 +55,7 @@ public class ReservationSvc extends SCServiceBase {
 
         try {
             LOG.trace("Retrieving reservations");
-            return db.getReservations(start, end, eventId, reservingPersonId, resourceType, resourceId);
+            return privatizer.privatizeReservations(db.getReservations(start, end, eventId, reservingPersonId, resourceType, resourceId));
         } catch (Throwable t) {
             throw new RuntimeException("Retrieving reservations failed:", t);
         }
@@ -60,6 +64,7 @@ public class ReservationSvc extends SCServiceBase {
     @POST @Path("/recurring") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public List<EventConflict> calculateConflicts(Event e) {
         verifyUserAccess("reservation.list");
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
 
         if(e == null || e.getRecurrence() == null)
             throw new BadRequestException();
@@ -86,6 +91,7 @@ public class ReservationSvc extends SCServiceBase {
     @POST @Path("/custom") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public List<EventConflict> calculateConflicts(List<Event> events) {
         verifyUserAccess("reservation.list");
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
 
         if(events == null || events.isEmpty())
             throw new BadRequestException();
@@ -159,6 +165,6 @@ public class ReservationSvc extends SCServiceBase {
     private EventConflict findConflicts(Event event, int recurrenceId) {
         List<Reservation> conflicts = new LinkedList<>();
         event.getReservations().forEach(res -> conflicts.addAll(db.getConflicts(res, recurrenceId)));
-        return conflicts.isEmpty()? null: new EventConflict(event, conflicts);
+        return conflicts.isEmpty()? null: privatizer.privatize(new EventConflict(event, conflicts));
     }
 }

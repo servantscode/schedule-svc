@@ -32,10 +32,12 @@ public class EventDB extends DBAccess {
         FIELD_MAP.put("description", "e.description");
         FIELD_MAP.put("recurringMeetingId", "recurring_meeting_id");
         FIELD_MAP.put("ministryName", "m.name");
+        FIELD_MAP.put("ministryId", "m.id");
         FIELD_MAP.put("departments", "department_names");
         FIELD_MAP.put("categories", "category_names");
         FIELD_MAP.put("privateEvent", "private_event");
         FIELD_MAP.put("contactId", "e.contact_id");
+        FIELD_MAP.put("schedulerId", "e.scheduler_id");
     }
 
     private SearchParser<Event> searchParser;

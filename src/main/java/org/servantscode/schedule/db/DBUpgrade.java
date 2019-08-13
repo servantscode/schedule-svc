@@ -91,7 +91,7 @@ public class DBUpgrade extends AbstractDBUpgrade {
         }
 
         if(!columnExists("events", "attendees")) {
-            LOG.info("-- Removing column categories");
+            LOG.info("-- Adding column attendees");
             runSql("ALTER TABLE events ADD COLUMN attendees INTEGER");
         }
     }

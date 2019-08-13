@@ -42,6 +42,9 @@ public class EventSvc extends SCServiceBase {
     private ReservationManager resMan;
     private EventManager eventMan;
     private RecurrenceManager recurMan;
+    private EventPrivatizer privatizer = new EventPrivatizer();
+
+    @Context SecurityContext securityContext;
 
     public EventSvc() {
         db = new EventDB();
@@ -54,11 +57,13 @@ public class EventSvc extends SCServiceBase {
     @GET @Path("/{id}") @Produces(APPLICATION_JSON)
     public Event getEvent(@PathParam("id") int id) {
         verifyUserAccess("event.read");
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
+
         try {
             Event event = db.getEvent(id);
             event.setReservations(resMan.getReservationsForEvent(event.getId()));
             event.setRecurrence(recurMan.getRecurrence(event.getRecurringMeetingId()));
-            return event;
+            return privatizer.privatize(event);
         } catch (Throwable t) {
             LOG.error("Retrieving events failed:", t);
         }
@@ -68,6 +73,7 @@ public class EventSvc extends SCServiceBase {
     @GET @Path("/{id}/futureEvents") @Produces(APPLICATION_JSON)
     public List<Event> getFutureEvents(@PathParam("id") int id) {
         verifyUserAccess("event.read");
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
         if(id <= 0)
             throw new NotFoundException();
 
@@ -81,7 +87,7 @@ public class EventSvc extends SCServiceBase {
                 event.setReservations(resMan.getReservationsForEvent(event.getId()));
                 event.setRecurrence(recurMan.getRecurrence(event.getRecurringMeetingId()));
             }
-            return events;
+            return privatizer.privatizeEvents(events);
         } catch (Throwable t) {
             LOG.error("Retrieving future events failed:", t);
             throw t;
@@ -110,10 +116,11 @@ public class EventSvc extends SCServiceBase {
                                               @QueryParam("search") @DefaultValue("") String search) {
 
         verifyUserAccess("event.list");
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
 
         try {
             LOG.trace(String.format("Retrieving events (%s, %s, page: %d; %d)", search, sortField, start, count));
-            int totalPeople = db.getCount(search);
+            int totalEvents = db.getCount(search);
 
             List<Event> events;
             events = db.getEvents(search, sortField, start, count);
@@ -123,7 +130,7 @@ public class EventSvc extends SCServiceBase {
             resMan.populateRservations(events, reservations);
             recurMan.populateRecurrences(events, recurrences);
 
-            return new PaginatedResponse<>(start, events.size(), totalPeople, events);
+            return new PaginatedResponse<>(start, events.size(), totalEvents, privatizer.privatizeEvents(events));
         } catch (Throwable t) {
             LOG.error("Retrieving events failed:", t);
             throw t;
@@ -135,13 +142,14 @@ public class EventSvc extends SCServiceBase {
                                          @QueryParam("count") @DefaultValue("10") int count) {
 
         verifyUserAccess("event.list");
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
         try {
             List<Event> events = db.getUpcomingMinistryEvents(ministryId, count);
             for(Event event: events) {
                 event.setReservations(resMan.getReservationsForEvent(event.getId()));
                 event.setRecurrence(recurMan.getRecurrence(event.getRecurringMeetingId()));
             }
-            return events;
+            return privatizer.privatizeEvents(events);
         } catch (Throwable t) {
             LOG.error("Retrieving events failed:", t);
         }
@@ -149,15 +157,15 @@ public class EventSvc extends SCServiceBase {
     }
 
     @GET @Path("/report") @Produces(MediaType.TEXT_PLAIN)
-    public Response getPeopleReport(@QueryParam("search") @DefaultValue("") String search,
+    public Response getEventReport(@QueryParam("search") @DefaultValue("") String search,
                                     @QueryParam("include_inactive") @DefaultValue("false") boolean includeInactive) {
 
-        verifyUserAccess("person.export");
+        verifyUserAccess("event.export");
 
         try {
             return Response.ok(db.getReportReader(search, EXPORTABLE_FIELDS)).build();
         } catch (Throwable t) {
-            LOG.error("Retrieving people report failed:", t);
+            LOG.error("Retrieving event report failed:", t);
             throw t;
         }
     }

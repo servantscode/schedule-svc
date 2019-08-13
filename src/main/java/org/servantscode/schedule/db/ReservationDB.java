@@ -16,7 +16,7 @@ public class ReservationDB extends DBAccess {
     private static final Logger LOG = LogManager.getLogger(ReservationDB.class);
 
     private QueryBuilder queryData() {
-        return select("r.*", "COALESCE(ro.name, e.name) as resource_name", "ev.title", "p.name AS reserver_name")
+        return select("r.*", "COALESCE(ro.name, e.name) as resource_name", "ev.title", "ev.private_event", "ev.scheduler_id", "p.name AS reserver_name")
                 .from("reservations r")
                 .join("LEFT JOIN rooms ro ON ro.id = r.resource_id AND r.resource_type='ROOM' ")
                 .join("LEFT JOIN equipment e ON e.id = r.resource_id AND r.resource_type='EQUIPMENT' ")
@@ -196,6 +196,7 @@ public class ReservationDB extends DBAccess {
                 res.setReserverName(rs.getString("reserver_name"));
                 res.setEventId(rs.getInt("event_id"));
                 res.setEventTitle(rs.getString("title"));
+                res.setPrivateEvent(rs.getBoolean("private_event"));
                 res.setStartTime(convert(rs.getTimestamp("start_time")));
                 res.setEndTime(convert(rs.getTimestamp("end_time")));
                 reservations.add(res);
