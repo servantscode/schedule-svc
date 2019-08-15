@@ -7,8 +7,6 @@ import org.servantscode.schedule.*;
 import org.servantscode.schedule.db.ReservationDB;
 
 import javax.ws.rs.*;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.SecurityContext;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -27,8 +25,6 @@ public class ReservationSvc extends SCServiceBase {
     ReservationDB db;
     private final EventPrivatizer privatizer = new EventPrivatizer();
 
-    @Context SecurityContext securityContext;
-
     public ReservationSvc() { db = new ReservationDB(); }
 
     @GET
@@ -41,7 +37,7 @@ public class ReservationSvc extends SCServiceBase {
                                              @QueryParam("resourceId") int resourceId) {
 
         verifyUserAccess("reservation.list");
-        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId());
         if (resourceId != 0 && resourceType == null)
             throw new BadRequestException();
 
@@ -64,7 +60,7 @@ public class ReservationSvc extends SCServiceBase {
     @POST @Path("/recurring") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public List<EventConflict> calculateConflicts(Event e) {
         verifyUserAccess("reservation.list");
-        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId());
 
         if(e == null || e.getRecurrence() == null)
             throw new BadRequestException();
@@ -91,7 +87,7 @@ public class ReservationSvc extends SCServiceBase {
     @POST @Path("/custom") @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
     public List<EventConflict> calculateConflicts(List<Event> events) {
         verifyUserAccess("reservation.list");
-        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId());
 
         if(events == null || events.isEmpty())
             throw new BadRequestException();

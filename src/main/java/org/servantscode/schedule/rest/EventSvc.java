@@ -10,10 +10,8 @@ import org.servantscode.schedule.db.RecurrenceDB;
 import org.servantscode.schedule.db.ReservationDB;
 
 import javax.ws.rs.*;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -44,7 +42,6 @@ public class EventSvc extends SCServiceBase {
     private RecurrenceManager recurMan;
     private EventPrivatizer privatizer = new EventPrivatizer();
 
-    @Context SecurityContext securityContext;
 
     public EventSvc() {
         db = new EventDB();
@@ -57,7 +54,7 @@ public class EventSvc extends SCServiceBase {
     @GET @Path("/{id}") @Produces(APPLICATION_JSON)
     public Event getEvent(@PathParam("id") int id) {
         verifyUserAccess("event.read");
-        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId());
 
         try {
             Event event = db.getEvent(id);
@@ -73,7 +70,7 @@ public class EventSvc extends SCServiceBase {
     @GET @Path("/{id}/futureEvents") @Produces(APPLICATION_JSON)
     public List<Event> getFutureEvents(@PathParam("id") int id) {
         verifyUserAccess("event.read");
-        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId());
         if(id <= 0)
             throw new NotFoundException();
 
@@ -116,7 +113,7 @@ public class EventSvc extends SCServiceBase {
                                               @QueryParam("search") @DefaultValue("") String search) {
 
         verifyUserAccess("event.list");
-        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId());
 
         try {
             LOG.trace(String.format("Retrieving events (%s, %s, page: %d; %d)", search, sortField, start, count));
@@ -142,7 +139,7 @@ public class EventSvc extends SCServiceBase {
                                          @QueryParam("count") @DefaultValue("10") int count) {
 
         verifyUserAccess("event.list");
-        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId(securityContext));
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId());
         try {
             List<Event> events = db.getUpcomingMinistryEvents(ministryId, count);
             for(Event event: events) {
@@ -212,14 +209,13 @@ public class EventSvc extends SCServiceBase {
 
     @PUT
     @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
-    public Event updateEvent(Event event,
-                             @Context SecurityContext securityContext) {
+    public Event updateEvent(Event event) {
         verifyUserAccess("event.update");
         try {
             Event dbEvent = db.getEvent(event.getId());
             if(dbEvent == null)
                 throw new NotFoundException();
-            if(event.getSchedulerId() != getUserId(securityContext) && !userHasAccess("admin.event.edit"))
+            if(event.getSchedulerId() != getUserId() && !userHasAccess("admin.event.edit"))
                 throw new ForbiddenException();
 
             if(event.getRecurrence() != null)
@@ -233,11 +229,10 @@ public class EventSvc extends SCServiceBase {
 
     @PUT @Path("/series")
     @Consumes(APPLICATION_JSON) @Produces(APPLICATION_JSON)
-    public Event updateEventSeries(List<Event> events,
-                                   @Context SecurityContext securityContext) {
+    public Event updateEventSeries(List<Event> events) {
         verifyUserAccess("event.update");
 
-        int userId = getUserId(securityContext);
+        int userId = getUserId();
         if(events.stream().anyMatch(event -> event.getSchedulerId() != userId) && !userHasAccess("admin.event.edit"))
             throw new ForbiddenException();
 
@@ -268,8 +263,7 @@ public class EventSvc extends SCServiceBase {
 
     @DELETE @Path("/{id}")
     public void deleteEvent(@PathParam("id") int id,
-                            @QueryParam("deleteFutureEvents") boolean deleteFutureEvents,
-                            @Context SecurityContext securityContext) {
+                            @QueryParam("deleteFutureEvents") boolean deleteFutureEvents) {
         verifyUserAccess("event.delete");
         if(id <= 0)
             throw new NotFoundException();
@@ -277,7 +271,7 @@ public class EventSvc extends SCServiceBase {
             Event event = db.getEvent(id);
             if(event == null)
                 throw new NotFoundException();
-            if(event.getSchedulerId() != getUserId(securityContext) && !userHasAccess("admin.event.delete"))
+            if(event.getSchedulerId() != getUserId() && !userHasAccess("admin.event.delete"))
                 throw new ForbiddenException();
 
             if(event.getRecurringMeetingId() > 0 && deleteFutureEvents)
