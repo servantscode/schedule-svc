@@ -35,7 +35,7 @@ public class RoomDB extends DBAccess {
             if (rs.next())
                 return rs.getInt(1);
         } catch (SQLException e) {
-            throw new RuntimeException("Could not retrieve people count '" + search + "'", e);
+            throw new RuntimeException("Could not retrieve room count '" + search + "'", e);
         }
         return 0;
     }
