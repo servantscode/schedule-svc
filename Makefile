@@ -11,14 +11,7 @@ include $(dpl)
 export $(shell sed 's/=.*//' $(dpl))
 
 # grep the version from the mix file
-VERSION=$(shell cat ./version.txt)
-
-LATEST=$(shell kubectl.exe describe deployment $(APP_NAME) | grep Image | grep latest)
-ifeq ($(LATEST),)
-TAG=:latest
-else
-TAG=
-endif
+VERSION=$(shell cat version.txt)
 
 # HELP
 # This will output the help for each task
@@ -34,32 +27,50 @@ help: ## This help.
 # DOCKER TASKS
 # Build the container
 build: ## Build the container
+	./inc-version.sh
 	docker.exe build -t servantcode/$(APP_NAME) .
 
 build-nc: ## Build the container without caching
 	docker.exe build --no-cache -t servantcode/$(APP_NAME) .
 
 run: ## Run container on port configured in `config.env`
-	kubectl.exe create -f kube.yml 
+	kubectl.exe create -f postgres-data-kube.yml
+	kubectl.exe create -f postgres-kube.yml 
+	kubectl.exe create -f kube.yml
 
 up: build run ## Run container on port configured in `config.env` (Alias to run)
 
 update:
-	kubectl.exe set image deployment/$(APP_NAME) $(APP_NAME)=servantcode/$(APP_NAME)$(TAG)
+	kubectl.exe set image deployment/$(APP_NAME) $(APP_NAME)=servantcode/$(APP_NAME):$(VERSION)
 
 stop: ## Stop and remove a running container
 	kubectl.exe delete -f kube.yml
+	kubectl.exe delete -f postgres-kube.yml
+	kubectl.exe delete -f postgres-data-kube.yml
 
-release: build-nc publish ## Make a release by building and publishing the `{version}` ans `latest` tagged containers to ECR
+major-release: bump-major-version build-nc publish 
+
+minor-release: bump-minor-version build-nc publish 
+
+release: bump-patch-version build-nc publish 
 
 # Docker publish
-publish: publish-latest publish-version ## Publish the `{version}` ans `latest` tagged containers to ECR
+publish: publish-latest publish-version 
 
-publish-latest: tag-latest ## Publish the `latest` taged container to ECR
+bump-major-version:
+	./inc-version.sh -M 
+
+bump-minor-version:
+	./inc-version.sh -m 
+
+bump-patch-version:
+	./inc-version.sh -p 
+
+publish-latest: tag-latest 
 	@echo 'publish latest to $(DOCKER_REPO)'
 	docker.exe push $(DOCKER_REPO)/servantcode/$(APP_NAME):latest
 
-publish-version: tag-version ## Publish the `{version}` taged container to ECR
+publish-version: tag-version 
 	@echo 'publish $(VERSION) to $(DOCKER_REPO)'
 	docker.exe push $(DOCKER_REPO)/servantcode/$(APP_NAME):$(VERSION)
 
@@ -78,20 +89,5 @@ logs: ## Get logs from running container
 	kubectl.exe logs $(shell kubectl.exe get pods | grep $(APP_NAME) | grep Running | cut -d ' ' -f 1)
 
 # HELPERS
-
-# generate script to login to aws docker repo
-CMD_REPOLOGIN := "eval $$\( aws ecr"
-ifdef AWS_CLI_PROFILE
-CMD_REPOLOGIN += " --profile $(AWS_CLI_PROFILE)"
-endif
-ifdef AWS_CLI_REGION
-CMD_REPOLOGIN += " --region $(AWS_CLI_REGION)"
-endif
-CMD_REPOLOGIN += " get-login --no-include-email \)"
-
-# login to AWS-ECR
-repo-login: ## Auto login to AWS-ECR unsing aws-cli
-	@eval $(CMD_REPOLOGIN)
-
 version: ## Output the current version
 	@echo $(VERSION)
