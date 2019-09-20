@@ -70,6 +70,9 @@ publish:
 logs: ## Get logs from running container
 	kubectl.exe logs $(shell kubectl.exe get pods | grep $(APP_NAME) | grep Running | cut -d ' ' -f 1)
 
+prompt: ## Get logs from running container
+	kubectl.exe exec -it $(shell kubectl.exe get pods | grep $(APP_NAME) | grep Running | cut -d ' ' -f 1) -- /bin/bash
+
 # HELPERS
 version: ## Output the current version
 	@echo $(VERSION)
