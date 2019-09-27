@@ -17,7 +17,14 @@ spec:
         image: servantcode/schedule-svc
         imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 8080
+        - name: http
+          containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /rest/ping
+            port: http
+          failureThreshold: 10
+          periodSeconds: 30
         resources:
           limits:
             memory: "250Mi"
