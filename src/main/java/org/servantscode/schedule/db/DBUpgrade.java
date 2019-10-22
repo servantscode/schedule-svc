@@ -26,6 +26,9 @@ public class DBUpgrade extends AbstractDBUpgrade {
                                         "contact_id INTEGER REFERENCES people(id) ON DELETE SET NULL, " +
                                         "ministry_id INTEGER REFERENCES ministries(id) ON DELETE CASCADE, " +
                                         "attendees INTEGER, " +
+                                        "created_time TIMESTAMP WITH TIME ZONE DEFAULT now(), " +
+                                        "modified_time TIMESTAMP WITH TIME ZONE DEFAULT now(), " +
+                                        "sequence_number INTEGER DEFAULT 0, " +
                                         "org_id INTEGER references organizations(id) ON DELETE CASCADE)");
         }
 
@@ -80,19 +83,8 @@ public class DBUpgrade extends AbstractDBUpgrade {
                                                   "category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE)");
         }
 
-        if(columnExists("events", "departments")) {
-            LOG.info("-- Removing column departments");
-            runSql("ALTER TABLE events DROP COLUMN departments");
-        }
-
-        if(columnExists("events", "categories")) {
-            LOG.info("-- Removing column categories");
-            runSql("ALTER TABLE events DROP COLUMN categories");
-        }
-
-        if(!columnExists("events", "attendees")) {
-            LOG.info("-- Adding column attendees");
-            runSql("ALTER TABLE events ADD COLUMN attendees INTEGER");
-        }
+        ensureColumn("events", "created_time", "TIMESTAMP WITH TIME ZONE DEFAULT now()");
+        ensureColumn("events", "modified_time", "TIMESTAMP WITH TIME ZONE DEFAULT now()");
+        ensureColumn("events", "sequence_number", "INTEGER DEFAULT 0");
     }
 }

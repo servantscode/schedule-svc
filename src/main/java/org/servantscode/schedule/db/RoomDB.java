@@ -4,8 +4,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.servantscode.commons.AutoCompleteComparator;
 import org.servantscode.commons.db.DBAccess;
+import org.servantscode.commons.db.EasyDB;
+import org.servantscode.commons.search.InsertBuilder;
 import org.servantscode.commons.search.QueryBuilder;
 import org.servantscode.commons.search.SearchParser;
+import org.servantscode.commons.search.UpdateBuilder;
 import org.servantscode.commons.security.OrganizationContext;
 import org.servantscode.schedule.Room;
 
@@ -17,123 +20,62 @@ import static java.lang.String.format;
 import static org.servantscode.commons.StringUtils.isEmpty;
 
 @SuppressWarnings("SqlNoDataSourceInspection")
-public class RoomDB extends DBAccess {
-    private static final Logger LOG = LogManager.getLogger(RoomDB.class);
-
-    private SearchParser<Room> searchParser;
+public class RoomDB extends EasyDB<Room> {
 
     public RoomDB() {
-        this.searchParser = new SearchParser<>(Room.class, "name");
+        super(Room.class, "name");
     }
 
     public int getCount(String search) {
-        QueryBuilder query = count().from("rooms").search(searchParser.parse(search)).inOrg();
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = query.prepareStatement(conn);
-             ResultSet rs = stmt.executeQuery()) {
-
-            if (rs.next())
-                return rs.getInt(1);
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not retrieve room count '" + search + "'", e);
-        }
-        return 0;
+        return getCount(count().from("rooms").search(searchParser.parse(search)).inOrg());
     }
 
     public Room getRoom(int id) {
-        QueryBuilder query = selectAll().from("rooms").withId(id).inOrg();
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = query.prepareStatement(conn);
-        ) {
-            List<Room> rooms = processResults(stmt);
-            return firstOrNull(rooms);
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not retrieve room: " + id, e);
-        }
+        return getOne(selectAll().from("rooms").withId(id).inOrg());
     }
 
     public List<Room> getRooms(String search, String sortField, int start, int count) {
         QueryBuilder query = selectAll().from("rooms").search(searchParser.parse(search)).inOrg()
-                .sort(sortField).limit(count).offset(start);
-        try ( Connection conn = getConnection();
-              PreparedStatement stmt = query.prepareStatement(conn)
-        ) {
-            return processResults(stmt);
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not retrieve rooms.", e);
-        }
+                .page(sortField, start, count);
+        return get(query);
     }
 
     public Room create(Room room) {
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("INSERT INTO rooms(name, type, capacity, org_id) values (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)
-        ){
+        InsertBuilder cmd = insertInto("rooms")
+                .value("name", room.getName())
+                .value("type", room.getType())
+                .value("capacity", room.getCapacity())
+                .value("org_id", OrganizationContext.orgId());
 
-            stmt.setString(1, room.getName());
-            stmt.setString(2, room.getType().toString());
-            stmt.setInt(3, room.getCapacity());
-            stmt.setInt(4, OrganizationContext.orgId());
-
-            if(stmt.executeUpdate() == 0) {
-                throw new RuntimeException("Could not create room: " + room.getName());
-            }
-
-            try (ResultSet rs = stmt.getGeneratedKeys()) {
-                if (rs.next())
-                    room.setId(rs.getInt(1));
-            }
-            return room;
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not add room: " + room.getName(), e);
-        }
+        room.setId(createAndReturnKey(cmd));
+        return room;
     }
 
     public Room updateRoom(Room room) {
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("UPDATE rooms SET name=?, type=?, capacity=? WHERE id=? AND org_id=?")
-        ) {
+        UpdateBuilder cmd = update("rooms")
+                .value("name", room.getName())
+                .value("type", room.getType())
+                .value("capacity", room.getCapacity())
+                .withId(room.getId()).inOrg();
 
-            stmt.setString(1, room.getName());
-            stmt.setString(2, room.getType().toString());
-            stmt.setInt(3, room.getCapacity());
-            stmt.setInt(4, room.getId());
-            stmt.setInt(5, OrganizationContext.orgId());
+        if(!update(cmd))
+            throw new RuntimeException("Could not update room: " + room.getName());
 
-            if (stmt.executeUpdate() == 0)
-                throw new RuntimeException("Could not update room: " + room.getName());
-
-            return room;
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not update room: " + room.getName(), e);
-        }
+        return room;
     }
 
     public boolean deleteRoom(int id) {
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement("DELETE FROM rooms WHERE id=? AND org_id=?")
-        ) {
-
-            stmt.setInt(1, id);
-            stmt.setInt(2, OrganizationContext.orgId());
-            return stmt.executeUpdate() != 0;
-        } catch (SQLException e) {
-            throw new RuntimeException("Could not delete room: " + id, e);
-        }
+        return delete(deleteFrom("rooms").withId(id).inOrg());
     }
 
     // ----- Private -----
-    private List<Room> processResults(PreparedStatement stmt) throws SQLException {
-        try (ResultSet rs = stmt.executeQuery()) {
-            List<Room> rooms = new ArrayList<>();
-            while (rs.next()) {
-                Room r = new Room();
-                r.setId(rs.getInt("id"));
-                r.setName(rs.getString("name"));
-                r.setType(Room.RoomType.valueOf(rs.getString("type")));
-                r.setCapacity(rs.getInt("capacity"));
-                rooms.add(r);
-            }
-            return rooms;
-        }
+    @Override
+    protected Room processRow(ResultSet rs) throws SQLException {
+        Room r = new Room();
+        r.setId(rs.getInt("id"));
+        r.setName(rs.getString("name"));
+        r.setType(Room.RoomType.valueOf(rs.getString("type")));
+        r.setCapacity(rs.getInt("capacity"));
+        return r;
     }
 }

@@ -16,13 +16,23 @@ public class Event {
     private boolean privateEvent;
     private int schedulerId;
     private int contactId;
-    private String ministryName;
+    private String contactName;
     private int ministryId;
+    private String ministryName;
     private int attendees;
     private List<String> departments;
     private List<Integer> departmentIds;
     private List<String> categories;
     private List<Integer> categoryIds;
+
+    @JsonIgnore
+    private ZonedDateTime createdTime;
+    @JsonIgnore
+    private ZonedDateTime modifiedTime;
+    @JsonIgnore
+    private int sequenceNumber;
+    @JsonIgnore
+    private String contactEmail;
 
     @JsonIgnore
     private int recurringMeetingId;
@@ -39,6 +49,8 @@ public class Event {
         this.privateEvent = e.privateEvent;
         this.schedulerId = e.schedulerId;
         this.contactId = e.contactId;
+        this.contactName = e.contactName;
+        this.contactEmail = e.contactEmail;
         this.ministryName = e.ministryName;
         this.ministryId = e.ministryId;
         this.attendees = e.attendees;
@@ -56,6 +68,9 @@ public class Event {
         if(e.reservations != null)
             for(Reservation r: e.reservations)
                 this.reservations.add(new Reservation(r));
+
+        this.createdTime = e.createdTime;
+        this.modifiedTime = e.modifiedTime;
     }
 
     // ----- Accessors -----
@@ -82,6 +97,12 @@ public class Event {
 
     public int getContactId() { return contactId; }
     public void setContactId(int contactId) { this.contactId = contactId; }
+
+    public String getContactName() { return contactName; }
+    public void setContactName(String contactName) { this.contactName = contactName; }
+
+    public String getContactEmail() { return contactEmail; }
+    public void setContactEmail(String contactEmail) { this.contactEmail = contactEmail; }
 
     public String getMinistryName() { return ministryName; }
     public void setMinistryName(String ministryName) { this.ministryName = ministryName; }
@@ -112,4 +133,14 @@ public class Event {
 
     public List<Reservation> getReservations() { return reservations; }
     public void setReservations(List<Reservation> reservations) { this.reservations = reservations; }
+
+    public ZonedDateTime getCreatedTime() { return createdTime; }
+    public void setCreatedTime(ZonedDateTime createdTime) { this.createdTime = createdTime; }
+
+    public ZonedDateTime getModifiedTime() { return modifiedTime; }
+    public void setModifiedTime(ZonedDateTime modifiedTime) { this.modifiedTime = modifiedTime; }
+
+    public int getSequenceNumber() { return sequenceNumber; }
+    public void setSequenceNumber(int sequenceNumber) { this.sequenceNumber = sequenceNumber; }
+    public void incrementSequenceNumber() { this.sequenceNumber++; }
 }
