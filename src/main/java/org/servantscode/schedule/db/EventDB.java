@@ -169,7 +169,7 @@ public class EventDB extends EasyDB<Event> {
     }
 
     public boolean deleteEvent(int id) {
-        return delete(deleteFrom("event").withId(id).inOrg());
+        return delete(deleteFrom("events").withId(id).inOrg());
     }
 
     // ----- Private -----
