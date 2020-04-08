@@ -128,19 +128,4 @@ public class RecurrenceDB extends EasyDB<Recurrence> {
         }
         return result;
     }
-
-    private static String encodeDateList(List<LocalDate> dates) {
-        if(dates == null || dates.isEmpty())
-            return "";
-
-        return dates.stream().map(date->date.format(DateTimeFormatter.ISO_DATE)).collect(Collectors.joining("|"));
-    }
-
-    private static List<LocalDate> decodeDateList(String dateString) {
-        if(isEmpty(dateString))
-            return emptyList();
-
-        String[] dates = dateString.split("\\|");
-        return Arrays.stream(dates).map(LocalDate::parse).collect(Collectors.toList());
-    }
 }
