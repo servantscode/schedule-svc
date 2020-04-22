@@ -32,6 +32,7 @@ public class Recurrence {
     }
 
     public Recurrence(Recurrence r) {
+        this.id = r.id;
         this.cycle = r.cycle;
         this.frequency = r.frequency;
         this.endDate = r.endDate;
