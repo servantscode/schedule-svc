@@ -15,6 +15,8 @@ import javax.ws.rs.core.Response;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.servantscode.schedule.Recurrence.RecurrenceCycle.CUSTOM;
@@ -128,6 +130,33 @@ public class EventSvc extends SCServiceBase {
             recurMan.populateRecurrences(events, recurrences);
 
             return new PaginatedResponse<>(start, events.size(), totalEvents, privatizer.privatizeEvents(events));
+        } catch (Throwable t) {
+            LOG.error("Retrieving events failed:", t);
+            throw t;
+        }
+    }
+
+    @GET @Path("/bulk") @Produces(APPLICATION_JSON)
+    public List<Event> getEventsById(@QueryParam("ids") String idString) {
+
+        verifyUserAccess("event.list");
+        privatizer.configurePrivatizer(userHasAccess("event.private.read"), getUserId());
+
+        List<Integer> ids = Stream.of(idString.split(",")).map(Integer::parseInt).collect(Collectors.toList());
+        if(ids.size() > 100)
+            throw new BadRequestException();
+
+        try {
+            LOG.trace(String.format("Retrieving %d events by id", ids.size()));
+
+            List<Event> events = db.getEventsById(ids);
+            List<Reservation> reservations = new ReservationDB().getEventReservationsById(ids);
+            List<Recurrence> recurrences = new RecurrenceDB().getEventRecurrencesById(ids);
+
+            resMan.populateRservations(events, reservations);
+            recurMan.populateRecurrences(events, recurrences);
+
+            return events;
         } catch (Throwable t) {
             LOG.error("Retrieving events failed:", t);
             throw t;

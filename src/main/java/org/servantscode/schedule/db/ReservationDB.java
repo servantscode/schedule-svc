@@ -56,6 +56,10 @@ public class ReservationDB extends EasyDB<Reservation> {
         return get(query);
     }
 
+    public List<Reservation> getEventReservationsById(List<Integer> eventIds) {
+        return get(queryData().withAny("r.event_id", eventIds));
+    }
+
     public List<Reservation> getReservationsForEvent(int eventId) {
         return get(queryData().with("r.event_id", eventId));
     }
@@ -134,4 +138,5 @@ public class ReservationDB extends EasyDB<Reservation> {
         res.setEndTime(convert(rs.getTimestamp("end_time")));
         return res;
     }
+
 }

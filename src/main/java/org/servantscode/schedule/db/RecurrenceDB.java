@@ -42,6 +42,11 @@ public class RecurrenceDB extends EasyDB<Recurrence> {
         return get(query);
     }
 
+    public List<Recurrence> getEventRecurrencesById(List<Integer> eventIds) {
+        QueryBuilder query = selectAll().from("recurrences")
+                .whereIdIn("id", select("DISTINCT e.recurring_meeting_id").from("events e").withIdIn(eventIds));
+        return get(query);
+    }
 
     public Recurrence create(Recurrence recurrence) {
         InsertBuilder cmd = insertInto("recurrences")

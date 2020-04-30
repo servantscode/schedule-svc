@@ -67,6 +67,11 @@ public class EventDB extends EasyDB<Event> {
         return get(query);
     }
 
+    public List<Event> getEventsById(List<Integer> ids) {
+        QueryBuilder query = query(allData()).withAny("e.id", ids);
+        return get(query);
+    }
+
     public List<Event> getUpcomingMinistryEvents(int ministryId, int count) {
         QueryBuilder query = query(allData()).where("start_time >= now()")
                 .with("ministry_id", ministryId)
@@ -270,5 +275,4 @@ public class EventDB extends EasyDB<Event> {
             stmt.executeBatch();
         }
     }
-
 }
