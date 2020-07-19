@@ -68,7 +68,7 @@ publish:
 	docker.exe push $(DOCKER_REPO)/servantcode/$(APP_NAME):$(VERSION)
 
 logs: ## Get logs from running container
-	kubectl.exe logs $(shell kubectl.exe get pods | grep $(APP_NAME) | grep Running | cut -d ' ' -f 1)
+	kubectl.exe logs -f $(shell kubectl.exe get pods | grep $(APP_NAME) | grep Running | cut -d ' ' -f 1)
 
 prompt: ## Get logs from running container
 	kubectl.exe exec -it $(shell kubectl.exe get pods | grep $(APP_NAME) | grep Running | cut -d ' ' -f 1) -- /bin/bash

@@ -7,6 +7,7 @@ import org.servantscode.commons.db.ReportStreamingOutput;
 import org.servantscode.commons.search.*;
 import org.servantscode.commons.security.OrganizationContext;
 import org.servantscode.schedule.Event;
+import org.servantscode.schedule.Event.SacramentType;
 
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.StreamingOutput;
@@ -38,7 +39,7 @@ public class EventDB extends EasyDB<Event> {
     }
 
     public EventDB() {
-        super(Event.class,"title",FIELD_MAP);
+        super(Event.class,"title", FIELD_MAP);
     }
 
     private QueryBuilder query(QueryBuilder data) {
@@ -90,6 +91,7 @@ public class EventDB extends EasyDB<Event> {
         QueryBuilder query = select("start_time").from("events")
                 .where("recurring_meeting_id=?", event.getRecurringMeetingId())
                 .where("start_time >= ?", event.getStartTime()).inOrg();
+
         try (Connection conn = getConnection();
              PreparedStatement stmt = query.prepareStatement(conn);
              ResultSet rs = stmt.executeQuery()) {
@@ -140,6 +142,7 @@ public class EventDB extends EasyDB<Event> {
                 .value("attendees", event.getAttendees())
                 .value("created_time", event.getCreatedTime())
                 .value("modified_time", event.getModifiedTime())
+                .value("sacrament_type", event.getSacramentType())
                 .value("org_id", OrganizationContext.orgId());
         event.setId(createAndReturnKey(cmd));
 
@@ -163,6 +166,7 @@ public class EventDB extends EasyDB<Event> {
                 .value("attendees", event.getAttendees())
                 .value("modified_time", event.getModifiedTime())
                 .value("sequence_number", event.getSequenceNumber())
+                .value("sacrament_type", event.getSacramentType())
                 .withId(event.getId()).inOrg();
 
         if (!update(cmd))
@@ -202,6 +206,7 @@ public class EventDB extends EasyDB<Event> {
         e.setDepartmentIds(parseIntList(rs.getArray("department_ids")));
         e.setCategories(parseStringList(rs.getArray("category_names")));
         e.setCategoryIds(parseIntList(rs.getArray("category_ids")));
+        e.setSacramentType(parse(SacramentType.class, rs.getString("sacrament_type")));
         return e;
     }
 

@@ -29,7 +29,9 @@ public class DBUpgrade extends AbstractDBUpgrade {
                                         "created_time TIMESTAMP WITH TIME ZONE DEFAULT now(), " +
                                         "modified_time TIMESTAMP WITH TIME ZONE DEFAULT now(), " +
                                         "sequence_number INTEGER DEFAULT 0, " +
+                                        "sacrament_type TEXT, " +
                                         "org_id INTEGER references organizations(id) ON DELETE CASCADE)");
+            runSql("CREATE INDEX event_sacrament_type ON events(sacrament_type)");
         }
 
         if(!tableExists("rooms")) {
@@ -83,8 +85,12 @@ public class DBUpgrade extends AbstractDBUpgrade {
                                                   "category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE)");
         }
 
-        ensureColumn("events", "created_time", "TIMESTAMP WITH TIME ZONE DEFAULT now()");
-        ensureColumn("events", "modified_time", "TIMESTAMP WITH TIME ZONE DEFAULT now()");
-        ensureColumn("events", "sequence_number", "INTEGER DEFAULT 0");
+        if(!columnExists("events", "sacrament_type")) {
+            ensureColumn("events", "sacrament_type", "TEXT");
+            runSql("CREATE INDEX event_sacrament_type ON events(sacrament_type)");
+            runSql("UPDATE events SET sacrament_type='MASS' WHERE title ILIKE '%Mass%'");
+            runSql("UPDATE events SET sacrament_type='BAPTISM' WHERE title ILIKE '%Baptism%' AND title NOT ILIKE '%Prep%'");
+            runSql("UPDATE events SET sacrament_type='RECONCILIATION' WHERE title ILIKE '%Confession%'");
+        }
     }
 }

@@ -8,6 +8,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class Event {
+    public enum SacramentType {MASS, BAPTISM, RECONCILIATION};
+
     private int id;
     private ZonedDateTime startTime;
     private ZonedDateTime endTime;
@@ -24,6 +26,7 @@ public class Event {
     private List<Integer> departmentIds;
     private List<String> categories;
     private List<Integer> categoryIds;
+    private SacramentType sacramentType;
 
     @JsonIgnore
     private ZonedDateTime createdTime;
@@ -71,6 +74,7 @@ public class Event {
 
         this.createdTime = e.createdTime;
         this.modifiedTime = e.modifiedTime;
+        this.sacramentType = e.sacramentType;
     }
 
     // ----- Accessors -----
@@ -143,4 +147,7 @@ public class Event {
     public int getSequenceNumber() { return sequenceNumber; }
     public void setSequenceNumber(int sequenceNumber) { this.sequenceNumber = sequenceNumber; }
     public void incrementSequenceNumber() { this.sequenceNumber++; }
+
+    public SacramentType getSacramentType() { return sacramentType; }
+    public void setSacramentType(SacramentType sacramentType) { this.sacramentType = sacramentType; }
 }
