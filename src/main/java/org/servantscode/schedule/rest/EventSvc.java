@@ -2,6 +2,7 @@ package org.servantscode.schedule.rest;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.servantscode.commons.EnumUtils;
 import org.servantscode.commons.rest.PaginatedResponse;
 import org.servantscode.commons.rest.SCServiceBase;
 import org.servantscode.schedule.*;
@@ -231,7 +232,7 @@ public class EventSvc extends SCServiceBase {
             Event dbEvent = db.getEvent(event.getId());
             if(dbEvent == null)
                 throw new NotFoundException();
-            if(event.getSchedulerId() != getUserId() && !userHasAccess("admin.event.edit"))
+            if(event.getSchedulerId() != getUserId() && !userHasAccess("admin.event.update"))
                 throw new ForbiddenException();
 
             if(event.getRecurrence() != null)
@@ -290,6 +291,9 @@ public class EventSvc extends SCServiceBase {
                 eventMan.deleteEvent(event);
         });
     }
+
+    @GET @Path("/sacrament/types") @Produces(APPLICATION_JSON)
+    public List<String> getSacramentTypes() { return EnumUtils.listValues(Event.SacramentType.class); }
 
     // ----- Private -----
     private void addReservationsAndRecurrences(@DefaultValue("") @QueryParam("search") String search, List<Event> events) {
